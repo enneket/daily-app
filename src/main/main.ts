@@ -34,8 +34,6 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
-    // 临时打开开发者工具调试
-    mainWindow.webContents.openDevTools();
   }
   
   // 监听 preload 脚本错误
