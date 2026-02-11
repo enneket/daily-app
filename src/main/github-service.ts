@@ -36,6 +36,18 @@ class GitHubService {
   }
 
   /**
+   * 测试连接并初始化仓库（如果需要）
+   */
+  async testConnectionAndInitialize(): Promise<void> {
+    await this.testConnection();
+    
+    const isInitialized = await this.checkRepoInitialized();
+    if (!isInitialized) {
+      await this.initializeRepo();
+    }
+  }
+
+  /**
    * 检查仓库是否已初始化（是否存在网站配置文件）
    */
   private async checkRepoInitialized(): Promise<boolean> {
@@ -244,12 +256,6 @@ jobs:
   }
 
   async submitReport(content: string): Promise<void> {
-    // 每次提交时检查并初始化仓库（如果需要）
-    const isInitialized = await this.checkRepoInitialized();
-    if (!isInitialized) {
-      await this.initializeRepo();
-    }
-
     const filePath = this.generateFilePath(new Date());
     const timestamp = new Date().toLocaleTimeString('zh-CN', { 
       hour: '2-digit', 

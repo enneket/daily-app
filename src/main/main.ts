@@ -72,6 +72,15 @@ ipcMain.handle('get-config', async () => {
 ipcMain.handle('save-config', async (_: any, config: any) => {
   store.set('github-config', config);
   githubService = new GitHubServiceClass(config);
+  
+  // 保存配置后自动初始化仓库
+  try {
+    await githubService.testConnectionAndInitialize();
+  } catch (error: any) {
+    console.error('初始化仓库失败:', error);
+    // 不阻止保存配置，只是记录错误
+  }
+  
   return { success: true };
 });
 
