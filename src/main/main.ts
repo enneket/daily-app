@@ -73,13 +73,20 @@ ipcMain.handle('save-config', async (_: any, config: any) => {
   
   // 保存配置后自动初始化仓库
   try {
-    await githubService.testConnectionAndInitialize();
+    const result = await githubService.testConnectionAndInitialize();
+    return { 
+      success: true, 
+      initialized: result.initialized,
+      skipped: result.skipped 
+    };
   } catch (error: any) {
     console.error('初始化仓库失败:', error);
-    // 不阻止保存配置，只是记录错误
+    // 如果是初始化失败，返回错误
+    return { 
+      success: false, 
+      error: error.message || '初始化失败，请检查网络连接和权限'
+    };
   }
-  
-  return { success: true };
 });
 
 ipcMain.handle('test-connection', async () => {

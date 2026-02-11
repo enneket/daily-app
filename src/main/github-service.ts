@@ -38,13 +38,15 @@ class GitHubService {
   /**
    * 测试连接并初始化仓库（如果需要）
    */
-  async testConnectionAndInitialize(): Promise<void> {
+  async testConnectionAndInitialize(): Promise<{ initialized: boolean; skipped: boolean }> {
     await this.testConnection();
     
     const isInitialized = await this.checkRepoInitialized();
     if (!isInitialized) {
       await this.initializeRepo();
+      return { initialized: true, skipped: false };
     }
+    return { initialized: false, skipped: true };
   }
 
   /**

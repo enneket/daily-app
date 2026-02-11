@@ -51,16 +51,30 @@ function Settings({ initialConfig, onSave, onCancel }: SettingsProps) {
     }
 
     setSaving(true);
-    setMessage({ type: 'success', text: '正在保存配置并初始化仓库...' });
+    setMessage({ type: 'success', text: '正在保存配置并检查仓库...' });
     
     try {
-      await window.electronAPI.saveConfig(config);
-      setMessage({ type: 'success', text: '配置已保存，仓库初始化完成！' });
+      const result = await window.electronAPI.saveConfig(config);
+      
+      if (!result.success) {
+        setMessage({ type: 'error', text: result.error || '保存失败' });
+        setSaving(false);
+        return;
+      }
+      
+      // 根据初始化结果显示不同消息
+      if (result.skipped) {
+        setMessage({ type: 'success', text: '配置已保存！仓库已初始化，无需重复设置。' });
+      } else if (result.initialized) {
+        setMessage({ type: 'success', text: '配置已保存，仓库初始化完成！请在 GitHub 设置中启用 Pages。' });
+      } else {
+        setMessage({ type: 'success', text: '配置已保存！' });
+      }
       
       // 延迟一下让用户看到成功消息
       setTimeout(() => {
         onSave(config);
-      }, 1500);
+      }, 2000);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || '保存失败' });
       setSaving(false);
