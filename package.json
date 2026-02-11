@@ -64,7 +64,6 @@
       "package.json"
     ],
     "publish": null,
-    "afterSign": false,
     "mac": {
       "target": [
         "dmg"
