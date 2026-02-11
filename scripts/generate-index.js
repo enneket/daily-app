@@ -8,8 +8,17 @@ const path = require('path');
 async function generateIndex() {
   console.log('开始生成日报索引...');
   
-  const reportsDir = '.';
+  const reportsDir = 'docs';
   const reports = [];
+  
+  // 检查 docs 目录是否存在
+  if (!await fs.pathExists(reportsDir)) {
+    console.log('docs 目录不存在，创建空索引');
+    await fs.ensureDir('site/.vitepress');
+    await fs.writeJson('site/.vitepress/reports-index.json', [], { spaces: 2 });
+    await fs.writeJson('site/.vitepress/stats.json', generateStats([]), { spaces: 2 });
+    return;
+  }
   
   // 递归扫描日报文件
   async function scanReports(dir) {
@@ -22,9 +31,7 @@ async function generateIndex() {
       if (entry.name.startsWith('.') || 
           entry.name === 'node_modules' || 
           entry.name === 'site' ||
-          entry.name === 'scripts' ||
-          entry.name === 'docs' ||
-          entry.name === 'plans') {
+          entry.name === 'scripts') {
         continue;
       }
       
@@ -90,7 +97,7 @@ async function generateIndex() {
         summary,
         timeEntries,
         wordCount,
-        path: `/${year}/${month}/${day}`
+        path: `/docs/${year}/${month}/${day}`
       });
       
       console.log(`  ✓ ${date}`);
