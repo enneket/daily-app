@@ -23,6 +23,9 @@ jobs:
         with:
           node-version: '20'
       
+      - name: 清除 npm 缓存
+        run: npm cache clean --force
+      
       - name: 安装依赖
         run: npm install
       
