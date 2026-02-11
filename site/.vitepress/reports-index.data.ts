@@ -1,10 +1,8 @@
+import { defineLoader } from 'vitepress';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-export default {
+export default defineLoader({
   async load() {
     const indexPath = path.join(__dirname, 'reports-index.json');
     
@@ -23,4 +21,4 @@ export default {
       return [];
     }
   }
-};
+});

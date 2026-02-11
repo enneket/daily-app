@@ -1,10 +1,8 @@
+import { defineLoader } from 'vitepress';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-export default {
+export default defineLoader({
   async load() {
     const statsPath = path.join(__dirname, 'stats.json');
     
@@ -37,4 +35,4 @@ export default {
       return defaultStats;
     }
   }
-};
+});
