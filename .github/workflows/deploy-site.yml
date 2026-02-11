@@ -33,7 +33,7 @@ jobs:
           cache: 'npm'
       
       - name: 安装依赖
-        run: npm ci
+        run: npm install
       
       - name: 生成日报索引
         run: node scripts/generate-index.js
