@@ -62,8 +62,8 @@ function Settings({ initialConfig, onSave, onCancel }: SettingsProps) {
   };
 
   return (
-    <div className="flex items-center justify-center h-full bg-gray-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-lg">
+    <div className="flex items-center justify-center h-full bg-gray-50 overflow-y-auto py-8">
+      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-lg my-auto">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">GitHub 配置</h2>
 
         <div className="space-y-4">
