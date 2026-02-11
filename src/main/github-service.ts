@@ -205,6 +205,7 @@ jobs:
       files.push({ path: '.github/workflows/deploy-site.yml', content: workflow });
 
       // 逐个上传文件
+      const failedFiles: string[] = [];
       for (const file of files) {
         try {
           await this.octokit.repos.createOrUpdateFileContents({
@@ -218,7 +219,12 @@ jobs:
           console.log(`已创建: ${file.path}`);
         } catch (error: any) {
           console.error(`创建文件失败 ${file.path}:`, error.message);
+          failedFiles.push(file.path);
         }
+      }
+
+      if (failedFiles.length > 0) {
+        console.warn(`以下文件创建失败: ${failedFiles.join(', ')}`);
       }
 
       console.log('日报仓库初始化完成！');
