@@ -36,10 +36,20 @@ npm run dev
 
 ## 📊 日报展示网站
 
-本仓库包含日报展示网站功能，可以自动生成美观的网页。
+本项目包含日报展示网站的源码（`site/` 目录），但网站应该部署在你的日报仓库中。
+
+### 设置日报仓库
+
+1. 创建一个新的 GitHub 仓库用于存储日报（例如：`daily-reports`）
+2. 将 `site/` 和 `scripts/` 目录复制到日报仓库
+3. 配置 GitHub Actions 自动部署
+
+👉 **详细步骤**: [docs/日报仓库设置指南.md](./docs/日报仓库设置指南.md)
+
+### 本地预览网站（在日报仓库）
 
 ```bash
-# 本地预览网站
+# 在日报仓库目录
 node scripts/generate-index.js
 npm run dev:site
 ```
