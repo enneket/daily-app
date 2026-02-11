@@ -60,6 +60,9 @@
     },
     "files": [
       "dist/**/*",
+      "site/**/*",
+      "scripts/**/*",
+      "docs/日报仓库README模板.md",
       "package.json"
     ],
     "asar": true,
