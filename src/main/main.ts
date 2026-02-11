@@ -8,6 +8,13 @@ let githubService: any = null;
 let GitHubServiceClass: any;
 
 function createWindow() {
+  const preloadPath = path.join(__dirname, 'preload.js');
+  console.log('=== Debug Info ===');
+  console.log('__dirname:', __dirname);
+  console.log('preload path:', preloadPath);
+  console.log('preload exists:', require('fs').existsSync(preloadPath));
+  console.log('==================');
+  
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
@@ -15,7 +22,7 @@ function createWindow() {
     minHeight: 500,
     autoHideMenuBar: true,  // 隐藏菜单栏
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false, // 开发模式禁用沙箱（Linux 兼容性）
@@ -27,7 +34,14 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+    // 临时打开开发者工具调试
+    mainWindow.webContents.openDevTools();
   }
+  
+  // 监听 preload 脚本错误
+  mainWindow.webContents.on('console-message', (event, level, message) => {
+    console.log('Renderer console:', message);
+  });
 }
 
 app.whenReady().then(() => {
