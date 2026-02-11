@@ -63,6 +63,8 @@
       "dist/**/*",
       "package.json"
     ],
+    "asar": true,
+    "compression": "maximum",
     "publish": null,
     "mac": {
       "target": [
