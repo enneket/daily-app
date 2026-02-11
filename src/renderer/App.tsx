@@ -46,7 +46,7 @@ function App() {
         <Settings
           initialConfig={config}
           onSave={handleSaveConfig}
-          onCancel={() => config && setShowSettings(false)}
+          onCancel={() => setShowSettings(false)}
         />
       ) : (
         <MainEditor onOpenSettings={() => setShowSettings(true)} />

@@ -154,9 +154,7 @@ function Settings({ initialConfig, onSave, onCancel }: SettingsProps) {
 
         <button
           onClick={onCancel}
-          disabled={!initialConfig}
-          className="w-full mt-3 px-4 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
-          title={!initialConfig ? '请先保存配置' : ''}
+          className="w-full mt-3 px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
         >
           ← 返回首页
         </button>
