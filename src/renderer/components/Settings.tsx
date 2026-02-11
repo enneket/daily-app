@@ -157,7 +157,7 @@ function Settings({ initialConfig, onSave, onCancel }: SettingsProps) {
             onClick={onCancel}
             className="w-full mt-3 px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
           >
-            取消
+            ← 返回首页
           </button>
         )}
 
