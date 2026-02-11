@@ -5,5 +5,9 @@ release
 *.log
 *.tgz
 .vscode/settings.json
+site/.vitepress/dist
+site/.vitepress/cache
+site/.vitepress/reports-index.json
+site/.vitepress/stats.json
 .vscode/
 .kiro/
