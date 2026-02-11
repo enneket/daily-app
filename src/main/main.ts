@@ -1,15 +1,11 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import Store from 'electron-store';
-import { GitHubService } from './github-service.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const { app, BrowserWindow, ipcMain } = require('electron');
+const path = require('path');
+const Store = require('electron-store');
 
 const store = new Store();
-let mainWindow: BrowserWindow | null = null;
-let githubService: GitHubService | null = null;
+let mainWindow: any = null;
+let githubService: any = null;
+let GitHubServiceClass: any;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -26,21 +22,19 @@ function createWindow() {
     },
   });
 
-  // 调试：打印 preload 路径
-  console.log('Preload path:', path.join(__dirname, 'preload.js'));
-  console.log('__dirname:', __dirname);
-
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
-    // 生产环境也打开开发者工具用于调试
-    mainWindow.webContents.openDevTools();
   }
 }
 
 app.whenReady().then(() => {
+  // 动态加载 GitHubService 避免编译时冲突
+  const githubServiceModule = require('./github-service');
+  GitHubServiceClass = githubServiceModule.GitHubService;
+  
   createWindow();
 
   app.on('activate', () => {
@@ -61,9 +55,9 @@ ipcMain.handle('get-config', async () => {
   return store.get('github-config');
 });
 
-ipcMain.handle('save-config', async (_, config) => {
+ipcMain.handle('save-config', async (_: any, config: any) => {
   store.set('github-config', config);
-  githubService = new GitHubService(config);
+  githubService = new GitHubServiceClass(config);
   return { success: true };
 });
 
@@ -73,7 +67,7 @@ ipcMain.handle('test-connection', async () => {
     if (!config) {
       return { success: false, error: '请先配置 GitHub 信息' };
     }
-    githubService = new GitHubService(config);
+    githubService = new GitHubServiceClass(config);
   }
   
   try {
@@ -90,7 +84,7 @@ ipcMain.handle('get-today-report', async () => {
     if (!config) {
       return { success: false, error: '请先配置 GitHub 信息' };
     }
-    githubService = new GitHubService(config);
+    githubService = new GitHubServiceClass(config);
   }
   
   try {
@@ -101,13 +95,13 @@ ipcMain.handle('get-today-report', async () => {
   }
 });
 
-ipcMain.handle('submit-report', async (_, content: string) => {
+ipcMain.handle('submit-report', async (_: any, content: string) => {
   if (!githubService) {
     const config = store.get('github-config') as any;
     if (!config) {
       return { success: false, error: '请先配置 GitHub 信息' };
     }
-    githubService = new GitHubService(config);
+    githubService = new GitHubServiceClass(config);
   }
   
   try {

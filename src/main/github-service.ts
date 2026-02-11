@@ -1,4 +1,4 @@
-import { Octokit } from '@octokit/rest';
+const { Octokit } = require('@octokit/rest');
 
 interface LocalConfig {
   githubToken: string;
@@ -14,8 +14,8 @@ interface RepoConfig {
   timeFormat: string;
 }
 
-export class GitHubService {
-  private octokit: Octokit;
+class GitHubService {
+  private octokit: any;
   private config: LocalConfig;
   private repoConfig?: RepoConfig;
 
@@ -99,3 +99,5 @@ export class GitHubService {
     });
   }
 }
+
+module.exports = { GitHubService };
