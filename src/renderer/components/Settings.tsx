@@ -51,12 +51,18 @@ function Settings({ initialConfig, onSave, onCancel }: SettingsProps) {
     }
 
     setSaving(true);
+    setMessage({ type: 'success', text: '正在保存配置并初始化仓库...' });
+    
     try {
       await window.electronAPI.saveConfig(config);
-      onSave(config);
+      setMessage({ type: 'success', text: '配置已保存，仓库初始化完成！' });
+      
+      // 延迟一下让用户看到成功消息
+      setTimeout(() => {
+        onSave(config);
+      }, 1500);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || '保存失败' });
-    } finally {
       setSaving(false);
     }
   };
@@ -148,7 +154,7 @@ function Settings({ initialConfig, onSave, onCancel }: SettingsProps) {
             disabled={saving}
             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
-            {saving ? '保存中...' : '保存'}
+            {saving ? '保存并初始化中...' : '保存并初始化'}
           </button>
         </div>
 

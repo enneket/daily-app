@@ -134,6 +134,16 @@ npm run package:all
 - **仓库名称**: 存储日报的仓库名
 - **分支名称**: 默认为 `main`
 
+点击"保存并初始化"后，应用会自动：
+- ✅ 测试 GitHub 连接
+- ✅ 检测仓库是否已初始化
+- ✅ 自动创建网站文件、脚本和 GitHub Actions 配置
+- ✅ 完成仓库初始化
+
+**首次保存可能需要 10-30 秒**，请耐心等待。
+
+👉 **详细说明**: [docs/自动初始化功能说明.md](./docs/自动初始化功能说明.md)
+
 ### 2. 获取 GitHub Token
 
 1. 访问 [GitHub Settings → Developer settings](https://github.com/settings/tokens)
