@@ -4,6 +4,27 @@
 
 ## 🚀 快速开始
 
+### ⚠️ 首次使用必读
+
+在使用前，请先配置你的信息：
+
+1. 打开 `package.json`，修改 `author` 字段：
+   ```json
+   "author": {
+     "name": "你的名字",
+     "email": "your.email@example.com"
+   }
+   ```
+
+2. 修改 Linux 打包配置（在 `package.json` 的 `build.linux` 中）：
+   ```json
+   "maintainer": "你的名字 <your.email@example.com>"
+   ```
+
+👉 **详细配置**: [docs/配置说明.md](./docs/配置说明.md)
+
+### 安装和运行
+
 ```bash
 npm install
 npm run dev
