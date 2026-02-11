@@ -103,6 +103,7 @@ class GitHubService {
       name: this.config.repoName,
       version: '1.0.0',
       description: '我的日报',
+      type: 'module',
       scripts: {
         'build:site': 'vitepress build site',
         'dev:site': 'vitepress dev site',
