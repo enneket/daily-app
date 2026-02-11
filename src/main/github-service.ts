@@ -20,7 +20,6 @@ class GitHubService {
   private octokit: any;
   private config: LocalConfig;
   private repoConfig?: RepoConfig;
-  private initialized: boolean = false;
 
   constructor(config: LocalConfig) {
     this.config = config;
@@ -211,7 +210,6 @@ jobs:
       }
 
       console.log('日报仓库初始化完成！');
-      this.initialized = true;
     } catch (error) {
       console.error('初始化仓库失败:', error);
       throw new Error('初始化仓库失败，请检查权限和网络连接');
@@ -246,13 +244,10 @@ jobs:
   }
 
   async submitReport(content: string): Promise<void> {
-    // 首次提交时检查并初始化仓库
-    if (!this.initialized) {
-      const isInitialized = await this.checkRepoInitialized();
-      if (!isInitialized) {
-        await this.initializeRepo();
-      }
-      this.initialized = true;
+    // 每次提交时检查并初始化仓库（如果需要）
+    const isInitialized = await this.checkRepoInitialized();
+    if (!isInitialized) {
+      await this.initializeRepo();
     }
 
     const filePath = this.generateFilePath(new Date());
