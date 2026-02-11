@@ -26,11 +26,17 @@ function createWindow() {
     },
   });
 
+  // 调试：打印 preload 路径
+  console.log('Preload path:', path.join(__dirname, 'preload.js'));
+  console.log('__dirname:', __dirname);
+
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+    // 生产环境也打开开发者工具用于调试
+    mainWindow.webContents.openDevTools();
   }
 }
 
