@@ -39,7 +39,7 @@ function createWindow() {
   }
   
   // 监听 preload 脚本错误
-  mainWindow.webContents.on('console-message', (event, level, message) => {
+  mainWindow.webContents.on('console-message', (_event: any, _level: any, message: any) => {
     console.log('Renderer console:', message);
   });
 }
