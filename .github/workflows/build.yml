@@ -34,6 +34,8 @@ jobs:
       
       - name: 打包 macOS
         if: matrix.os == 'macos-latest'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run package:mac
       
       - name: 打包 Windows
