@@ -53,12 +53,31 @@ jobs:
           npm run package:linux
         timeout-minutes: 30
       
-      - name: 上传构建产物
+      - name: 上传 macOS 安装包
+        if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: release-${{ matrix.os }}
-          path: release/*
-          retention-days: 30  # 保留 30 天
+          name: release-macos
+          path: release/*.dmg
+          retention-days: 30
+      
+      - name: 上传 Windows 安装包
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: release/*.exe
+          retention-days: 30
+      
+      - name: 上传 Linux 安装包
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: |
+            release/*.AppImage
+            release/*.deb
+          retention-days: 30
   
   release:
     needs: build
@@ -68,6 +87,13 @@ jobs:
       contents: write
     
     steps:
+      - name: 删除已存在的 Release（如果有）
+        continue-on-error: true
+        run: |
+          gh release delete ${{ github.ref_name }} --yes || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
       - name: 下载所有构建产物
         uses: actions/download-artifact@v4
         with:
