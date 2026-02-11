@@ -108,16 +108,14 @@ function MainEditor({ onOpenSettings }: MainEditorProps) {
 
       {/* Message Toast */}
       {message && (
-        <div className="fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg animate-fade-in">
-          <div
-            className={`${
-              message.type === 'success'
-                ? 'bg-green-500 text-white'
-                : 'bg-red-500 text-white'
-            }`}
-          >
-            {message.text}
-          </div>
+        <div
+          className={`fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg animate-fade-in font-medium ${
+            message.type === 'success'
+              ? 'bg-green-500 text-white'
+              : 'bg-red-500 text-white'
+          }`}
+        >
+          {message.text}
         </div>
       )}
     </div>
