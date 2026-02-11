@@ -152,14 +152,14 @@ function Settings({ initialConfig, onSave, onCancel }: SettingsProps) {
           </button>
         </div>
 
-        {initialConfig && (
-          <button
-            onClick={onCancel}
-            className="w-full mt-3 px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-          >
-            ← 返回首页
-          </button>
-        )}
+        <button
+          onClick={onCancel}
+          disabled={!initialConfig}
+          className="w-full mt-3 px-4 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+          title={!initialConfig ? '请先保存配置' : ''}
+        >
+          ← 返回首页
+        </button>
 
         <div className="mt-6 p-4 bg-blue-50 rounded-lg">
           <p className="text-sm text-blue-800 font-medium mb-2">如何获取 GitHub Token？</p>
