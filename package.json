@@ -1,6 +1,6 @@
 {
   "name": "daily-report-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "跨平台日报桌面应用",
   "main": "dist/main/main.js",
   "scripts": {
