@@ -15,6 +15,17 @@ const safeStats = stats || {
   byMonth: {},
   byYear: {}
 };
+
+// 将对象转换为数组，避免 v-for 遍历对象的问题
+const yearStatsArray = Object.entries(safeStats.byYear || {})
+  .map(([year, count]) => ({ year, count }))
+  .sort((a, b) => b.year.localeCompare(a.year));
+
+const monthStatsArray = Object.entries(safeStats.byMonth || {})
+  .map(([month, count]) => ({ month, count }))
+  .sort((a, b) => b.month.localeCompare(a.month));
+
+const hasTimeRange = safeStats.firstDate && safeStats.lastDate;
 </script>
 
 <div class="stats-container">
@@ -46,8 +57,8 @@ const safeStats = stats || {
     </div>
   </div>
 
-  <h2>时间跨度</h2>
-  <div class="time-range" v-if="safeStats.firstDate && safeStats.lastDate">
+  <h2 v-if="hasTimeRange">时间跨度</h2>
+  <div class="time-range" v-if="hasTimeRange">
     <div class="range-item">
       <div class="range-label">第一篇</div>
       <div class="range-value">{{ safeStats.firstDate }}</div>
@@ -59,33 +70,33 @@ const safeStats = stats || {
     </div>
   </div>
 
-  <h2>按年统计</h2>
-  <div class="year-stats">
+  <h2 v-if="yearStatsArray.length > 0">按年统计</h2>
+  <div class="year-stats" v-if="yearStatsArray.length > 0">
     <div 
-      v-for="(count, year) in safeStats.byYear" 
-      :key="year"
+      v-for="item in yearStatsArray" 
+      :key="item.year"
       class="year-item"
     >
-      <div class="year-label">{{ year }} 年</div>
+      <div class="year-label">{{ item.year }} 年</div>
       <div class="year-bar">
         <div 
           class="year-bar-fill" 
-          :style="{ width: `${(count / safeStats.total * 100)}%` }"
+          :style="{ width: `${(item.count / safeStats.total * 100)}%` }"
         ></div>
       </div>
-      <div class="year-count">{{ count }} 篇</div>
+      <div class="year-count">{{ item.count }} 篇</div>
     </div>
   </div>
 
-  <h2>按月统计</h2>
-  <div class="month-stats">
+  <h2 v-if="monthStatsArray.length > 0">按月统计</h2>
+  <div class="month-stats" v-if="monthStatsArray.length > 0">
     <div 
-      v-for="(count, month) in safeStats.byMonth" 
-      :key="month"
+      v-for="item in monthStatsArray" 
+      :key="item.month"
       class="month-item"
     >
-      <div class="month-label">{{ month }}</div>
-      <div class="month-count">{{ count }} 篇</div>
+      <div class="month-label">{{ item.month }}</div>
+      <div class="month-count">{{ item.count }} 篇</div>
     </div>
   </div>
 </div>
