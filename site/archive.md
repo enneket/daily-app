@@ -112,13 +112,13 @@ function resetFilters() {
       <h2 class="month-title">{{ group.year }} 年 {{ group.month }} 月</h2>
       <div class="month-reports">
         <div v-for="report in group.reports" :key="report.date" class="archive-item">
-          <div class="archive-date">{{ report.day }}</div>
+          <div class="archive-date">{{ report.day || report.date.split('-')[2] }}</div>
           <div class="archive-content">
             <h3><a :href="report.path">{{ report.title }}</a></h3>
             <p class="archive-summary">{{ report.summary }}</p>
             <div class="archive-meta">
               <span class="meta-item">{{ report.wordCount }} 字</span>
-              <span class="meta-item">{{ report.timeEntries.length }} 个时间点</span>
+              <span class="meta-item">{{ report.timeEntries?.length || 0 }} 个时间点</span>
             </div>
           </div>
         </div>

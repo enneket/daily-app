@@ -51,39 +51,39 @@ const thisMonthCompletion = computed(() => {
   <div class="stats-grid">
     <div class="stat-card large">
       <div class="stat-icon">📝</div>
-      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-value">{{ stats.total || 0 }}</div>
       <div class="stat-label">总日报数</div>
     </div>
     
     <div class="stat-card large">
       <div class="stat-icon">🔥</div>
-      <div class="stat-value">{{ stats.streak }}</div>
+      <div class="stat-value">{{ stats.streak || 0 }}</div>
       <div class="stat-label">连续天数</div>
     </div>
     
     <div class="stat-card">
-      <div class="stat-value">{{ stats.thisYear }}</div>
+      <div class="stat-value">{{ stats.thisYear || 0 }}</div>
       <div class="stat-label">今年日报</div>
     </div>
     
     <div class="stat-card">
-      <div class="stat-value">{{ stats.thisMonth }}</div>
+      <div class="stat-value">{{ stats.thisMonth || 0 }}</div>
       <div class="stat-label">本月日报</div>
     </div>
     
     <div class="stat-card">
-      <div class="stat-value">{{ stats.totalWords.toLocaleString() }}</div>
+      <div class="stat-value">{{ (stats.totalWords || 0).toLocaleString() }}</div>
       <div class="stat-label">总字数</div>
     </div>
     
     <div class="stat-card">
-      <div class="stat-value">{{ stats.avgWords }}</div>
+      <div class="stat-value">{{ stats.avgWords || 0 }}</div>
       <div class="stat-label">平均字数</div>
     </div>
   </div>
   
   <h2>时间跨度</h2>
-  <div class="time-range">
+  <div class="time-range" v-if="stats.firstDate && stats.lastDate">
     <div class="time-item">
       <div class="time-label">第一篇</div>
       <div class="time-value">{{ stats.firstDate }}</div>
@@ -94,15 +94,16 @@ const thisMonthCompletion = computed(() => {
       <div class="time-value">{{ stats.lastDate }}</div>
     </div>
   </div>
+  <div v-else class="no-data">暂无数据</div>
   
   <h2>本月完成率</h2>
-  <div class="completion-bar">
+  <div class="completion-bar" v-if="stats.thisMonth !== undefined">
     <div class="completion-fill" :style="{ width: thisMonthCompletion + '%' }">
       {{ thisMonthCompletion }}%
     </div>
   </div>
   <p class="completion-text">
-    本月已完成 {{ stats.thisMonth }} 篇日报
+    本月已完成 {{ stats.thisMonth || 0 }} 篇日报
   </p>
   
   <h2>按年份统计</h2>
@@ -134,7 +135,7 @@ const thisMonthCompletion = computed(() => {
   </div>
   
   <h2>记录</h2>
-  <div class="records">
+  <div class="records" v-if="longestReport && shortestReport">
     <div class="record-card">
       <div class="record-title">📏 最长日报</div>
       <div class="record-content">
@@ -151,6 +152,7 @@ const thisMonthCompletion = computed(() => {
       </div>
     </div>
   </div>
+  <div v-else class="no-data">暂无数据</div>
 </div>
 
 <style scoped>

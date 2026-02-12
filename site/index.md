@@ -24,19 +24,19 @@ const recentReports = reports.slice(0, 10);
 <div class="home-content">
   <div class="stats-grid">
     <div class="stat-card">
-      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-value">{{ stats.total || 0 }}</div>
       <div class="stat-label">总日报数</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value">{{ stats.streak }}</div>
+      <div class="stat-value">{{ stats.streak || 0 }}</div>
       <div class="stat-label">连续天数</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value">{{ stats.thisMonth }}</div>
+      <div class="stat-value">{{ stats.thisMonth || 0 }}</div>
       <div class="stat-label">本月日报</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value">{{ stats.avgWords }}</div>
+      <div class="stat-value">{{ stats.avgWords || 0 }}</div>
       <div class="stat-label">平均字数</div>
     </div>
   </div>
@@ -46,16 +46,16 @@ const recentReports = reports.slice(0, 10);
     <div v-for="report in recentReports" :key="report.date" class="report-item">
       <div class="report-meta">
         <span class="report-date">{{ report.date }}</span>
-        <span class="report-words">{{ report.wordCount }} 字</span>
+        <span class="report-words">{{ report.wordCount || 0 }} 字</span>
       </div>
       <h3><a :href="report.path">{{ report.title }}</a></h3>
       <p class="report-summary">{{ report.summary }}</p>
       <div class="report-times">
-        <span v-for="entry in report.timeEntries.slice(0, 3)" :key="entry.time" class="time-tag">
+        <span v-for="entry in (report.timeEntries || []).slice(0, 3)" :key="entry.time" class="time-tag">
           {{ entry.time }}
         </span>
-        <span v-if="report.timeEntries.length > 3" class="time-more">
-          +{{ report.timeEntries.length - 3 }}
+        <span v-if="(report.timeEntries || []).length > 3" class="time-more">
+          +{{ (report.timeEntries || []).length - 3 }}
         </span>
       </div>
     </div>
