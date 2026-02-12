@@ -22,7 +22,7 @@ class GitHubService {
   private repoConfig?: RepoConfig;
   
   // 版本管理
-  private readonly CURRENT_VERSION = '1.1.0';
+  private readonly CURRENT_VERSION = '1.1.1';
   private readonly FILE_VERSIONS: Record<string, string> = {
     'site/.vitepress/config.ts': '1.1.0',
     'site/.vitepress/reports-index.data.ts': '1.1.0',
@@ -37,7 +37,7 @@ class GitHubService {
     'scripts/generate-index.js': '1.1.0',
     'package.json': '1.1.0',
     '.gitignore': '1.0.0',
-    '.github/workflows/deploy-site.yml': '1.0.0',
+    '.github/workflows/deploy-site.yml': '1.1.1',
     'README.md': '1.0.0'
   };
 
@@ -203,6 +203,7 @@ on:
       - '**.md'
       - '.github/workflows/deploy-site.yml'
       - 'scripts/**'
+      - 'site/**'
   workflow_dispatch:
 
 permissions:
@@ -226,6 +227,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      
+      - name: 清理缓存
+        run: |
+          rm -rf site/.vitepress/cache
+          rm -rf site/.vitepress/dist
+          rm -f site/.vitepress/reports-index.json
+          rm -f site/.vitepress/stats.json
       
       - name: 安装依赖
         run: npm install
