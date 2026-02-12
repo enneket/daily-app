@@ -100,7 +100,7 @@ async function generateIndex() {
         summary,
         timeEntries,
         wordCount,
-        path: `/docs/${year}/${month}/${day}`
+        path: `/daily/docs/${year}/${month}/${day}`
       });
       
       console.log(`  ✓ ${date}`);
