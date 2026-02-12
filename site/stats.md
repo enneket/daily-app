@@ -1,5 +1,6 @@
 # 总体统计
 
+<ClientOnly>
 <script setup>
 import { data as reports } from './.vitepress/reports-index.data';
 import { data as stats } from './.vitepress/stats.data';
@@ -100,6 +101,7 @@ const hasTimeRange = safeStats.firstDate && safeStats.lastDate;
     </div>
   </div>
 </div>
+</ClientOnly>
 
 <style scoped>
 .stats-container {
