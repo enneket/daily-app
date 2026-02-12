@@ -85,6 +85,8 @@ class GitHubService {
       { local: 'site/.vitepress/config.ts', remote: 'site/.vitepress/config.ts' },
       { local: 'site/.vitepress/reports-index.data.ts', remote: 'site/.vitepress/reports-index.data.ts' },
       { local: 'site/.vitepress/stats.data.ts', remote: 'site/.vitepress/stats.data.ts' },
+      { local: 'site/.vitepress/reports-index.json', remote: 'site/.vitepress/reports-index.json' },
+      { local: 'site/.vitepress/stats.json', remote: 'site/.vitepress/stats.json' },
       
       // 网站页面
       { local: 'site/index.md', remote: 'site/index.md' },
