@@ -6,11 +6,12 @@ import { useRouter } from 'vitepress';
 import { onMounted } from 'vue';
 
 const router = useRouter();
+const safeReports = Array.isArray(reports) ? reports : [];
 
 onMounted(() => {
-  if (reports.length > 0) {
+  if (safeReports.length > 0) {
     // 重定向到最新的日报
-    router.go(reports[0].path);
+    router.go(safeReports[0].path);
   }
 });
 </script>

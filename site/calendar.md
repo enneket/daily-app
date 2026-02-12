@@ -9,9 +9,11 @@ const currentMonth = ref(new Date().getMonth() + 1);
 
 const reportsByDate = computed(() => {
   const map = {};
-  reports.forEach(report => {
-    map[report.date] = report;
-  });
+  if (Array.isArray(reports)) {
+    reports.forEach(report => {
+      map[report.date] = report;
+    });
+  }
   return map;
 });
 

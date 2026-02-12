@@ -18,7 +18,8 @@ hero:
 import { data as reports } from './.vitepress/reports-index.data';
 import { data as stats } from './.vitepress/stats.data';
 
-const recentReports = reports.slice(0, 10);
+const safeReports = Array.isArray(reports) ? reports : [];
+const recentReports = safeReports.slice(0, 10);
 </script>
 
 <div class="home-content">

@@ -7,10 +7,13 @@ import { data as reports } from './.vitepress/reports-index.data';
 const selectedYear = ref('all');
 const selectedMonth = ref('all');
 
+// 确保 reports 是数组
+const safeReports = Array.isArray(reports) ? reports : [];
+
 // 按年份分组
 const reportsByYear = computed(() => {
   const grouped = {};
-  reports.forEach(report => {
+  safeReports.forEach(report => {
     if (!grouped[report.year]) {
       grouped[report.year] = [];
     }
@@ -38,7 +41,7 @@ const months = computed(() => {
 
 // 过滤后的日报
 const filteredReports = computed(() => {
-  let filtered = reports;
+  let filtered = safeReports;
   
   if (selectedYear.value !== 'all') {
     filtered = filtered.filter(r => r.year === selectedYear.value);

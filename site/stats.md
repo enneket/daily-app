@@ -5,22 +5,36 @@ import { computed } from 'vue';
 import { data as stats } from './.vitepress/stats.data';
 import { data as reports } from './.vitepress/reports-index.data';
 
+const safeReports = Array.isArray(reports) ? reports : [];
+const safeStats = stats || {
+  total: 0,
+  streak: 0,
+  thisYear: 0,
+  thisMonth: 0,
+  totalWords: 0,
+  avgWords: 0,
+  byMonth: {},
+  byYear: {},
+  firstDate: '',
+  lastDate: ''
+};
+
 // 计算平均每天字数
 const avgWordsPerDay = computed(() => {
-  if (stats.total === 0) return 0;
-  return Math.round(stats.totalWords / stats.total);
+  if (safeStats.total === 0) return 0;
+  return Math.round(safeStats.totalWords / safeStats.total);
 });
 
 // 按年份统计
 const yearStats = computed(() => {
-  return Object.entries(stats.byYear)
+  return Object.entries(safeStats.byYear)
     .map(([year, count]) => ({ year, count }))
     .sort((a, b) => b.year.localeCompare(a.year));
 });
 
 // 按月份统计（最近12个月）
 const monthStats = computed(() => {
-  return Object.entries(stats.byMonth)
+  return Object.entries(safeStats.byMonth)
     .map(([month, count]) => ({ month, count }))
     .sort((a, b) => b.month.localeCompare(a.month))
     .slice(0, 12);
@@ -28,12 +42,14 @@ const monthStats = computed(() => {
 
 // 最长的日报
 const longestReport = computed(() => {
-  return [...reports].sort((a, b) => b.wordCount - a.wordCount)[0];
+  if (safeReports.length === 0) return null;
+  return [...safeReports].sort((a, b) => b.wordCount - a.wordCount)[0];
 });
 
 // 最短的日报
 const shortestReport = computed(() => {
-  return [...reports].sort((a, b) => a.wordCount - b.wordCount)[0];
+  if (safeReports.length === 0) return null;
+  return [...safeReports].sort((a, b) => a.wordCount - b.wordCount)[0];
 });
 
 // 计算完成率（本月）
@@ -41,7 +57,7 @@ const thisMonthCompletion = computed(() => {
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const currentDay = now.getDate();
-  return Math.round((stats.thisMonth / currentDay) * 100);
+  return Math.round((safeStats.thisMonth / currentDay) * 100);
 });
 </script>
 
@@ -51,33 +67,33 @@ const thisMonthCompletion = computed(() => {
   <div class="stats-grid">
     <div class="stat-card large">
       <div class="stat-icon">📝</div>
-      <div class="stat-value">{{ stats.total || 0 }}</div>
+      <div class="stat-value">{{ safeStats.total || 0 }}</div>
       <div class="stat-label">总日报数</div>
     </div>
     
     <div class="stat-card large">
       <div class="stat-icon">🔥</div>
-      <div class="stat-value">{{ stats.streak || 0 }}</div>
+      <div class="stat-value">{{ safeStats.streak || 0 }}</div>
       <div class="stat-label">连续天数</div>
     </div>
     
     <div class="stat-card">
-      <div class="stat-value">{{ stats.thisYear || 0 }}</div>
+      <div class="stat-value">{{ safeStats.thisYear || 0 }}</div>
       <div class="stat-label">今年日报</div>
     </div>
     
     <div class="stat-card">
-      <div class="stat-value">{{ stats.thisMonth || 0 }}</div>
+      <div class="stat-value">{{ safeStats.thisMonth || 0 }}</div>
       <div class="stat-label">本月日报</div>
     </div>
     
     <div class="stat-card">
-      <div class="stat-value">{{ (stats.totalWords || 0).toLocaleString() }}</div>
+      <div class="stat-value">{{ (safeStats.totalWords || 0).toLocaleString() }}</div>
       <div class="stat-label">总字数</div>
     </div>
     
     <div class="stat-card">
-      <div class="stat-value">{{ stats.avgWords || 0 }}</div>
+      <div class="stat-value">{{ safeStats.avgWords || 0 }}</div>
       <div class="stat-label">平均字数</div>
     </div>
   </div>
