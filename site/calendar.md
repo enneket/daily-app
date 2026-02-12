@@ -103,10 +103,10 @@ function goToToday() {
       >
         <template v-if="day">
           <a v-if="day.hasReport" :href="day.report?.path || '#'" class="day-link">
-            <span class="day-number">{{ day.day }}</span>
+            <span class="day-number">{{ day?.day || '' }}</span>
             <span class="day-indicator">●</span>
           </a>
-          <span v-else class="day-number">{{ day.day }}</span>
+          <span v-else class="day-number">{{ day?.day || '' }}</span>
         </template>
       </div>
     </div>
