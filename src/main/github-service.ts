@@ -22,7 +22,7 @@ class GitHubService {
   private repoConfig?: RepoConfig;
   
   // 版本管理
-  private readonly CURRENT_VERSION = '1.2.1';
+  private readonly CURRENT_VERSION = '1.2.2';
   private readonly FILE_VERSIONS: Record<string, string> = {
     'site/.vitepress/config.ts': '1.1.3',
     'site/.vitepress/reports-index.data.ts': '1.1.0',
@@ -34,7 +34,7 @@ class GitHubService {
     'site/archive.md': '1.2.0',
     'site/stats.md': '1.2.1',
     'site/latest.md': '1.1.0',
-    'scripts/generate-index.js': '1.1.0',
+    'scripts/generate-index.js': '1.2.2',
     'package.json': '1.1.0',
     '.gitignore': '1.0.0',
     '.github/workflows/deploy-site.yml': '1.1.1',
@@ -361,7 +361,7 @@ jobs:
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `docs/${year}/${month}/${day}.md`;
+    return `site/docs/${year}/${month}/${day}.md`;
   }
 
   async getTodayReport(): Promise<string> {

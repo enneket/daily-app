@@ -9,14 +9,14 @@ import { constants } from 'fs';
 async function generateIndex() {
   console.log('开始生成日报索引...');
   
-  const reportsDir = 'docs';
+  const reportsDir = 'site/docs';
   const reports = [];
   
-  // 检查 docs 目录是否存在
+  // 检查 site/docs 目录是否存在
   try {
     await access(reportsDir, constants.F_OK);
   } catch {
-    console.log('docs 目录不存在，创建空索引');
+    console.log('site/docs 目录不存在，创建空索引');
     await mkdir('site/.vitepress', { recursive: true });
     await writeFile('site/.vitepress/reports-index.json', JSON.stringify([], null, 2));
     await writeFile('site/.vitepress/stats.json', JSON.stringify(generateStats([]), null, 2));
