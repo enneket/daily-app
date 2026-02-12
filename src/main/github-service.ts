@@ -41,6 +41,97 @@ class GitHubService {
     '.github/workflows/deploy-site.yml': '1.1.1',
     'README.md': '1.0.0'
   };
+
+  constructor(config: LocalConfig) {
+    this.config = config;
+    this.octokit = new Octokit({
+      auth: config.githubToken,
+    });
+  }
+
+  async testConnection(): Promise<void> {
+    await this.octokit.repos.get({
+      owner: this.config.repoOwner,
+      repo: this.config.repoName,
+    });
+  }
+
+  /**
+   * 测试连接并初始化/更新仓库
+   */
+  async testConnectionAndInitialize(): Promise<{ 
+    initialized: boolean; 
+    skipped: boolean;
+    updated: boolean;
+    updatedFiles: string[];
+  }> {
+    await this.testConnection();
+    
+    const { needsUpdate, outdatedFiles } = await this.checkVersion();
+    
+    if (needsUpdate) {
+      await this.updateRepoFiles(outdatedFiles);
+      return { 
+        initialized: true, 
+        skipped: false,
+        updated: true,
+        updatedFiles: outdatedFiles
+      };
+    }
+    
+    return { 
+      initialized: false, 
+      skipped: true,
+      updated: false,
+      updatedFiles: []
+    };
+  }
+
+  /**
+   * 检查仓库版本，判断是否需要更新
+   */
+  private async checkVersion(): Promise<{ needsUpdate: boolean; outdatedFiles: string[] }> {
+    try {
+      const { data } = await this.octokit.repos.getContent({
+        owner: this.config.repoOwner,
+        repo: this.config.repoName,
+        path: '.daily-version.json',
+        ref: this.config.branch,
+      });
+      
+      if ('content' in data) {
+        const versionInfo = JSON.parse(Buffer.from(data.content, 'base64').toString());
+        
+        // 比较整体版本
+        if (versionInfo.version !== this.CURRENT_VERSION) {
+          console.log(`版本不匹配: ${versionInfo.version} -> ${this.CURRENT_VERSION}`);
+          return { needsUpdate: true, outdatedFiles: Object.keys(this.FILE_VERSIONS) };
+        }
+        
+        // 检查单个文件版本
+        const outdatedFiles: string[] = [];
+        for (const [file, version] of Object.entries(this.FILE_VERSIONS)) {
+          if (!versionInfo.files || versionInfo.files[file] !== version) {
+            outdatedFiles.push(file);
+          }
+        }
+        
+        if (outdatedFiles.length > 0) {
+          console.log(`发现 ${outdatedFiles.length} 个过期文件`);
+          return { needsUpdate: true, outdatedFiles };
+        }
+        
+        console.log('仓库已是最新版本');
+        return { needsUpdate: false, outdatedFiles: [] };
+      }
+    } catch (error) {
+      // 没有版本文件，需要完整初始化
+      console.log('未找到版本文件，需要初始化');
+      return { needsUpdate: true, outdatedFiles: Object.keys(this.FILE_VERSIONS) };
+    }
+    
+    return { needsUpdate: false, outdatedFiles: [] };
+  }
   
 
   /**
