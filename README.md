@@ -8,7 +8,7 @@
 
 ## 📦 下载
 
-从 [Releases](https://github.com/enneket/daily-app/releases/latest) 页面下载最新版本：
+从 [Releases](https://github.com/enneket/daily-app/releases/latest) 页面下载最新版本
 
 ## ✨ 功能特性
 
