@@ -71,20 +71,22 @@ ipcMain.handle('save-config', async (_: any, config: any) => {
   store.set('github-config', config);
   githubService = new GitHubServiceClass(config);
   
-  // 保存配置后自动初始化仓库
+  // 保存配置后自动初始化/更新仓库
   try {
     const result = await githubService.testConnectionAndInitialize();
     return { 
       success: true, 
       initialized: result.initialized,
-      skipped: result.skipped 
+      skipped: result.skipped,
+      updated: result.updated,
+      updatedFiles: result.updatedFiles
     };
   } catch (error: any) {
-    console.error('初始化仓库失败:', error);
-    // 如果是初始化失败，返回错误
+    console.error('初始化/更新仓库失败:', error);
+    // 如果是初始化/更新失败，返回错误
     return { 
       success: false, 
-      error: error.message || '初始化失败，请检查网络连接和权限'
+      error: error.message || '操作失败，请检查网络连接和权限'
     };
   }
 });

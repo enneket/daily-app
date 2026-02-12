@@ -62,11 +62,22 @@ function Settings({ initialConfig, onSave, onCancel }: SettingsProps) {
         return;
       }
       
-      // 根据初始化结果显示不同消息
-      if (result.skipped) {
-        setMessage({ type: 'success', text: '配置已保存！仓库已初始化，无需重复设置。' });
+      // 根据初始化/更新结果显示不同消息
+      if (result.updated && result.updatedFiles && result.updatedFiles.length > 0) {
+        setMessage({ 
+          type: 'success', 
+          text: `配置已保存！已更新 ${result.updatedFiles.length} 个文件到最新版本 (v1.1.0)。` 
+        });
+      } else if (result.skipped) {
+        setMessage({ 
+          type: 'success', 
+          text: '配置已保存！仓库已是最新版本 (v1.1.0)，无需更新。' 
+        });
       } else if (result.initialized) {
-        setMessage({ type: 'success', text: '配置已保存，仓库初始化完成！请在 GitHub 设置中启用 Pages。' });
+        setMessage({ 
+          type: 'success', 
+          text: '配置已保存，仓库初始化完成！请在 GitHub 设置中启用 Pages。' 
+        });
       } else {
         setMessage({ type: 'success', text: '配置已保存！' });
       }

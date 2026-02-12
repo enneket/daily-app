@@ -20,6 +20,26 @@ class GitHubService {
   private octokit: any;
   private config: LocalConfig;
   private repoConfig?: RepoConfig;
+  
+  // 版本管理
+  private readonly CURRENT_VERSION = '1.1.0';
+  private readonly FILE_VERSIONS: Record<string, string> = {
+    'site/.vitepress/config.ts': '1.1.0',
+    'site/.vitepress/reports-index.data.ts': '1.1.0',
+    'site/.vitepress/stats.data.ts': '1.1.0',
+    'site/.vitepress/reports-index.json': '1.1.0',
+    'site/.vitepress/stats.json': '1.1.0',
+    'site/index.md': '1.1.0',
+    'site/calendar.md': '1.1.0',
+    'site/archive.md': '1.1.0',
+    'site/stats.md': '1.1.0',
+    'site/latest.md': '1.1.0',
+    'scripts/generate-index.js': '1.1.0',
+    'package.json': '1.1.0',
+    '.gitignore': '1.0.0',
+    '.github/workflows/deploy-site.yml': '1.0.0',
+    'README.md': '1.0.0'
+  };
 
   constructor(config: LocalConfig) {
     this.config = config;
@@ -36,34 +56,80 @@ class GitHubService {
   }
 
   /**
-   * 测试连接并初始化仓库（如果需要）
+   * 测试连接并初始化/更新仓库
    */
-  async testConnectionAndInitialize(): Promise<{ initialized: boolean; skipped: boolean }> {
+  async testConnectionAndInitialize(): Promise<{ 
+    initialized: boolean; 
+    skipped: boolean;
+    updated: boolean;
+    updatedFiles: string[];
+  }> {
     await this.testConnection();
     
-    const isInitialized = await this.checkRepoInitialized();
-    if (!isInitialized) {
-      await this.initializeRepo();
-      return { initialized: true, skipped: false };
+    const { needsUpdate, outdatedFiles } = await this.checkVersion();
+    
+    if (needsUpdate) {
+      await this.updateRepoFiles(outdatedFiles);
+      return { 
+        initialized: true, 
+        skipped: false,
+        updated: true,
+        updatedFiles: outdatedFiles
+      };
     }
-    return { initialized: false, skipped: true };
+    
+    return { 
+      initialized: false, 
+      skipped: true,
+      updated: false,
+      updatedFiles: []
+    };
   }
 
   /**
-   * 检查仓库是否已初始化（是否存在网站配置文件）
+   * 检查仓库版本，判断是否需要更新
    */
-  private async checkRepoInitialized(): Promise<boolean> {
+  private async checkVersion(): Promise<{ needsUpdate: boolean; outdatedFiles: string[] }> {
     try {
-      await this.octokit.repos.getContent({
+      const { data } = await this.octokit.repos.getContent({
         owner: this.config.repoOwner,
         repo: this.config.repoName,
-        path: 'site/.vitepress/config.ts',
+        path: '.daily-version.json',
         ref: this.config.branch,
       });
-      return true;
+      
+      if ('content' in data) {
+        const versionInfo = JSON.parse(Buffer.from(data.content, 'base64').toString());
+        
+        // 比较整体版本
+        if (versionInfo.version !== this.CURRENT_VERSION) {
+          console.log(`版本不匹配: ${versionInfo.version} -> ${this.CURRENT_VERSION}`);
+          return { needsUpdate: true, outdatedFiles: Object.keys(this.FILE_VERSIONS) };
+        }
+        
+        // 检查单个文件版本
+        const outdatedFiles: string[] = [];
+        for (const [file, version] of Object.entries(this.FILE_VERSIONS)) {
+          if (!versionInfo.files || versionInfo.files[file] !== version) {
+            outdatedFiles.push(file);
+          }
+        }
+        
+        if (outdatedFiles.length > 0) {
+          console.log(`发现 ${outdatedFiles.length} 个过期文件`);
+          return { needsUpdate: true, outdatedFiles };
+        }
+        
+        console.log('仓库已是最新版本');
+        return { needsUpdate: false, outdatedFiles: [] };
+      }
     } catch (error) {
-      return false;
+      // 没有版本文件，需要完整初始化
+      console.log('未找到版本文件，需要初始化');
+      return { needsUpdate: true, outdatedFiles: Object.keys(this.FILE_VERSIONS) };
     }
+    
+    return { needsUpdate: false, outdatedFiles: [] };
   }
 
   /**
@@ -75,10 +141,10 @@ class GitHubService {
   }
 
   /**
-   * 初始化日报仓库（复制网站文件）
+   * 更新日报仓库文件
    */
-  private async initializeRepo(): Promise<void> {
-    console.log('开始初始化日报仓库...');
+  private async updateRepoFiles(filesToUpdate: string[]): Promise<void> {
+    console.log(`开始更新日报仓库，共 ${filesToUpdate.length} 个文件...`);
 
     const filesToCopy = [
       // 网站配置
@@ -189,53 +255,98 @@ jobs:
         uses: actions/deploy-pages@v4
 `;
 
+    // 版本文件
+    const versionInfo = {
+      version: this.CURRENT_VERSION,
+      updatedAt: new Date().toISOString(),
+      files: this.FILE_VERSIONS
+    };
+
     try {
       // 批量创建文件
       const files: Array<{ path: string; content: string }> = [];
 
       // 复制本地文件
       for (const file of filesToCopy) {
-        try {
-          const content = this.readLocalFile(file.local);
-          files.push({ path: file.remote, content });
-        } catch (error) {
-          console.warn(`跳过文件 ${file.local}:`, error);
+        if (filesToUpdate.includes(file.remote)) {
+          try {
+            const content = this.readLocalFile(file.local);
+            files.push({ path: file.remote, content });
+          } catch (error) {
+            console.warn(`跳过文件 ${file.local}:`, error);
+          }
         }
       }
 
-      // 添加生成的文件
-      files.push({ path: 'package.json', content: JSON.stringify(packageJson, null, 2) });
-      files.push({ path: '.gitignore', content: gitignore });
-      files.push({ path: '.github/workflows/deploy-site.yml', content: workflow });
+      // 添加生成的文件（如果需要更新）
+      if (filesToUpdate.includes('package.json')) {
+        files.push({ path: 'package.json', content: JSON.stringify(packageJson, null, 2) });
+      }
+      if (filesToUpdate.includes('.gitignore')) {
+        files.push({ path: '.gitignore', content: gitignore });
+      }
+      if (filesToUpdate.includes('.github/workflows/deploy-site.yml')) {
+        files.push({ path: '.github/workflows/deploy-site.yml', content: workflow });
+      }
+
+      // 始终更新版本文件
+      files.push({ path: '.daily-version.json', content: JSON.stringify(versionInfo, null, 2) });
 
       // 逐个上传文件
       const failedFiles: string[] = [];
       for (const file of files) {
         try {
+          // 获取现有文件的 SHA（如果存在）
+          let sha: string | undefined;
+          try {
+            const { data } = await this.octokit.repos.getContent({
+              owner: this.config.repoOwner,
+              repo: this.config.repoName,
+              path: file.path,
+              ref: this.config.branch,
+            });
+            if ('sha' in data) {
+              sha = data.sha;
+            }
+          } catch (error) {
+            // 文件不存在，不需要 SHA
+          }
+
           await this.octokit.repos.createOrUpdateFileContents({
             owner: this.config.repoOwner,
             repo: this.config.repoName,
             path: file.path,
-            message: `Initialize: Add ${file.path}`,
+            message: `Update: ${file.path} to v${this.CURRENT_VERSION}`,
             content: Buffer.from(file.content).toString('base64'),
             branch: this.config.branch,
+            sha: sha,
           });
-          console.log(`已创建: ${file.path}`);
+          console.log(`已更新: ${file.path}`);
         } catch (error: any) {
-          console.error(`创建文件失败 ${file.path}:`, error.message);
+          console.error(`更新文件失败 ${file.path}:`, error.message);
           failedFiles.push(file.path);
         }
       }
 
       if (failedFiles.length > 0) {
-        console.warn(`以下文件创建失败: ${failedFiles.join(', ')}`);
+        console.warn(`以下文件更新失败: ${failedFiles.join(', ')}`);
+        throw new Error(`部分文件更新失败: ${failedFiles.join(', ')}`);
       }
 
-      console.log('日报仓库初始化完成！');
+      console.log('日报仓库更新完成！');
     } catch (error) {
-      console.error('初始化仓库失败:', error);
-      throw new Error('初始化仓库失败，请检查权限和网络连接');
+      console.error('更新仓库失败:', error);
+      throw new Error('更新仓库失败，请检查权限和网络连接');
     }
+  }
+
+  /**
+   * 初始化日报仓库（复制网站文件）
+   * @deprecated 使用 updateRepoFiles 替代
+   */
+  private async initializeRepo(): Promise<void> {
+    // 调用 updateRepoFiles 进行完整初始化
+    await this.updateRepoFiles(Object.keys(this.FILE_VERSIONS));
   }
 
   private generateFilePath(date: Date): string {
