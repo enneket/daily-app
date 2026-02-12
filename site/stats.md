@@ -1,6 +1,5 @@
 # 总体统计
 
-<ClientOnly>
 <script setup>
 import { data as reports } from './.vitepress/reports-index.data';
 import { data as stats } from './.vitepress/stats.data';
@@ -29,6 +28,7 @@ const monthStatsArray = Object.entries(safeStats.byMonth || {})
 const hasTimeRange = safeStats.firstDate && safeStats.lastDate;
 </script>
 
+<ClientOnly>
 <div class="stats-container">
   <div class="stats-grid">
     <div class="stat-card large">
