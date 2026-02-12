@@ -22,7 +22,7 @@ class GitHubService {
   private repoConfig?: RepoConfig;
   
   // 版本管理
-  private readonly CURRENT_VERSION = '1.2.2';
+  private readonly CURRENT_VERSION = '1.2.3';
   private readonly FILE_VERSIONS: Record<string, string> = {
     'site/.vitepress/config.ts': '1.1.3',
     'site/.vitepress/reports-index.data.ts': '1.1.0',
@@ -35,102 +35,13 @@ class GitHubService {
     'site/stats.md': '1.2.1',
     'site/latest.md': '1.1.0',
     'scripts/generate-index.js': '1.2.2',
+    'scripts/migrate-reports.js': '1.2.3',
     'package.json': '1.1.0',
     '.gitignore': '1.0.0',
     '.github/workflows/deploy-site.yml': '1.1.1',
     'README.md': '1.0.0'
   };
-
-  constructor(config: LocalConfig) {
-    this.config = config;
-    this.octokit = new Octokit({
-      auth: config.githubToken,
-    });
-  }
-
-  async testConnection(): Promise<void> {
-    await this.octokit.repos.get({
-      owner: this.config.repoOwner,
-      repo: this.config.repoName,
-    });
-  }
-
-  /**
-   * 测试连接并初始化/更新仓库
-   */
-  async testConnectionAndInitialize(): Promise<{ 
-    initialized: boolean; 
-    skipped: boolean;
-    updated: boolean;
-    updatedFiles: string[];
-  }> {
-    await this.testConnection();
-    
-    const { needsUpdate, outdatedFiles } = await this.checkVersion();
-    
-    if (needsUpdate) {
-      await this.updateRepoFiles(outdatedFiles);
-      return { 
-        initialized: true, 
-        skipped: false,
-        updated: true,
-        updatedFiles: outdatedFiles
-      };
-    }
-    
-    return { 
-      initialized: false, 
-      skipped: true,
-      updated: false,
-      updatedFiles: []
-    };
-  }
-
-  /**
-   * 检查仓库版本，判断是否需要更新
-   */
-  private async checkVersion(): Promise<{ needsUpdate: boolean; outdatedFiles: string[] }> {
-    try {
-      const { data } = await this.octokit.repos.getContent({
-        owner: this.config.repoOwner,
-        repo: this.config.repoName,
-        path: '.daily-version.json',
-        ref: this.config.branch,
-      });
-      
-      if ('content' in data) {
-        const versionInfo = JSON.parse(Buffer.from(data.content, 'base64').toString());
-        
-        // 比较整体版本
-        if (versionInfo.version !== this.CURRENT_VERSION) {
-          console.log(`版本不匹配: ${versionInfo.version} -> ${this.CURRENT_VERSION}`);
-          return { needsUpdate: true, outdatedFiles: Object.keys(this.FILE_VERSIONS) };
-        }
-        
-        // 检查单个文件版本
-        const outdatedFiles: string[] = [];
-        for (const [file, version] of Object.entries(this.FILE_VERSIONS)) {
-          if (!versionInfo.files || versionInfo.files[file] !== version) {
-            outdatedFiles.push(file);
-          }
-        }
-        
-        if (outdatedFiles.length > 0) {
-          console.log(`发现 ${outdatedFiles.length} 个过期文件`);
-          return { needsUpdate: true, outdatedFiles };
-        }
-        
-        console.log('仓库已是最新版本');
-        return { needsUpdate: false, outdatedFiles: [] };
-      }
-    } catch (error) {
-      // 没有版本文件，需要完整初始化
-      console.log('未找到版本文件，需要初始化');
-      return { needsUpdate: true, outdatedFiles: Object.keys(this.FILE_VERSIONS) };
-    }
-    
-    return { needsUpdate: false, outdatedFiles: [] };
-  }
+  
 
   /**
    * 读取本地文件内容
@@ -141,10 +52,128 @@ class GitHubService {
   }
 
   /**
+   * 迁移旧的日报文件从 docs/ 到 site/docs/
+   */
+  private async migrateOldReports(): Promise<void> {
+    console.log('检查是否需要迁移旧的日报文件...');
+    
+    try {
+      // 检查 docs/ 目录是否存在
+      const { data: docsContent } = await this.octokit.repos.getContent({
+        owner: this.config.repoOwner,
+        repo: this.config.repoName,
+        path: 'docs',
+        ref: this.config.branch,
+      });
+      
+      if (!Array.isArray(docsContent)) {
+        console.log('docs/ 不是目录，无需迁移');
+        return;
+      }
+      
+      // 检查是否包含年份目录（日报文件）
+      const hasReports = docsContent.some(item => 
+        item.type === 'dir' && /^\d{4}$/.test(item.name)
+      );
+      
+      if (!hasReports) {
+        console.log('docs/ 目录中没有日报文件，无需迁移');
+        return;
+      }
+      
+      console.log('发现旧的日报文件，开始迁移...');
+      
+      // 递归获取所有日报文件
+      const reportFiles: Array<{ path: string; content: string; sha: string }> = [];
+      
+      const scanDirectory = async (path: string): Promise<void> => {
+        const { data: items } = await this.octokit.repos.getContent({
+          owner: this.config.repoOwner,
+          repo: this.config.repoName,
+          path,
+          ref: this.config.branch,
+        });
+        
+        if (!Array.isArray(items)) return;
+        
+        for (const item of items) {
+          if (item.type === 'dir') {
+            await scanDirectory(item.path);
+          } else if (item.type === 'file' && item.name.endsWith('.md')) {
+            // 读取文件内容
+            const { data: fileData } = await this.octokit.repos.getContent({
+              owner: this.config.repoOwner,
+              repo: this.config.repoName,
+              path: item.path,
+              ref: this.config.branch,
+            });
+            
+            if ('content' in fileData) {
+              reportFiles.push({
+                path: item.path,
+                content: Buffer.from(fileData.content, 'base64').toString(),
+                sha: fileData.sha
+              });
+            }
+          }
+        }
+      };
+      
+      await scanDirectory('docs');
+      
+      console.log(`找到 ${reportFiles.length} 个日报文件，开始迁移...`);
+      
+      // 迁移文件
+      for (const file of reportFiles) {
+        // 计算新路径：docs/2026/02/12.md -> site/docs/2026/02/12.md
+        const newPath = file.path.replace(/^docs\//, 'site/docs/');
+        
+        try {
+          // 创建新文件
+          await this.octokit.repos.createOrUpdateFileContents({
+            owner: this.config.repoOwner,
+            repo: this.config.repoName,
+            path: newPath,
+            message: `Migrate: ${file.path} -> ${newPath}`,
+            content: Buffer.from(file.content).toString('base64'),
+            branch: this.config.branch,
+          });
+          
+          console.log(`  ✓ 迁移: ${file.path} -> ${newPath}`);
+          
+          // 删除旧文件
+          await this.octokit.repos.deleteFile({
+            owner: this.config.repoOwner,
+            repo: this.config.repoName,
+            path: file.path,
+            message: `Remove old file: ${file.path}`,
+            sha: file.sha,
+            branch: this.config.branch,
+          });
+        } catch (error: any) {
+          console.error(`迁移文件失败 ${file.path}:`, error.message);
+        }
+      }
+      
+      console.log(`✓ 迁移完成！共迁移 ${reportFiles.length} 个日报文件`);
+      
+    } catch (error: any) {
+      if (error.status === 404) {
+        console.log('未找到 docs/ 目录，无需迁移');
+      } else {
+        console.error('迁移过程出错:', error.message);
+      }
+    }
+  }
+
+  /**
    * 更新日报仓库文件
    */
   private async updateRepoFiles(filesToUpdate: string[]): Promise<void> {
     console.log(`开始更新日报仓库，共 ${filesToUpdate.length} 个文件...`);
+    
+    // 检查并迁移旧的日报文件
+    await this.migrateOldReports();
 
     const filesToCopy = [
       // 网站配置
@@ -163,6 +192,7 @@ class GitHubService {
       
       // 脚本
       { local: 'scripts/generate-index.js', remote: 'scripts/generate-index.js' },
+      { local: 'scripts/migrate-reports.js', remote: 'scripts/migrate-reports.js' },
       
       // 配置文件
       { local: 'docs/日报仓库README模板.md', remote: 'README.md' },
