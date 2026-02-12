@@ -2,17 +2,13 @@
 
 一个跨平台桌面应用，用于快速编写和提交日报到 GitHub 仓库，并自动生成精美的日报展示网站。
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/你的用户名/daily-app/releases)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/enneket/daily-app/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/你的用户名/daily-app/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/enneket/daily-app/releases)
 
 ## 📦 下载
 
-从 [Releases](https://github.com/你的用户名/daily-app/releases/latest) 页面下载最新版本：
-
-- **Windows**: `DailyReport-Setup-1.0.0.exe`
-- **macOS**: `DailyReport-1.0.0.dmg`
-- **Linux**: `DailyReport-1.0.0.AppImage` 或 `.deb`
+从 [Releases](https://github.com/enneket/daily-app/releases/latest) 页面下载最新版本：
 
 ## ✨ 功能特性
 
