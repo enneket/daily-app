@@ -5,7 +5,7 @@ export default defineConfig({
   description: '记录每一天的成长',
   lang: 'zh-CN',
   
-  base: '/daily/',  // 根据你的仓库名修改
+  base: '/{{REPO_NAME}}/',  // 根据你的仓库名修改
   
   // 启用 Vue 支持
   vue: {
@@ -47,7 +47,7 @@ export default defineConfig({
     },
     
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/你的用户名/daily' }
+      { icon: 'github', link: 'https://github.com/{{REPO_OWNER}}/{{REPO_NAME}}' }
     ],
     
     footer: {
@@ -65,6 +65,6 @@ export default defineConfig({
   },
   
   sitemap: {
-    hostname: 'https://你的用户名.github.io/daily'
+    hostname: 'https://{{REPO_OWNER}}.github.io/{{REPO_NAME}}'
   }
 });

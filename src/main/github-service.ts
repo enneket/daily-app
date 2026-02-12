@@ -22,9 +22,9 @@ class GitHubService {
   private repoConfig?: RepoConfig;
   
   // 版本管理
-  private readonly CURRENT_VERSION = '1.2.4';
+  private readonly CURRENT_VERSION = '1.2.5';
   private readonly FILE_VERSIONS: Record<string, string> = {
-    'site/.vitepress/config.ts': '1.1.3',
+    'site/.vitepress/config.ts': '1.2.5',
     'site/.vitepress/reports-index.data.ts': '1.1.0',
     'site/.vitepress/stats.data.ts': '1.1.0',
     'site/.vitepress/reports-index.json': '1.1.0',
@@ -140,6 +140,14 @@ class GitHubService {
   private readLocalFile(relativePath: string): string {
     const filePath = pathModule.join(__dirname, '../../', relativePath);
     return fsModule.readFileSync(filePath, 'utf-8');
+  }
+  /**
+   * 替换内容中的占位符
+   */
+  private replacePlaceholders(content: string): string {
+    return content
+      .replace(/\{\{REPO_OWNER\}\}/g, this.config.repoOwner)
+      .replace(/\{\{REPO_NAME\}\}/g, this.config.repoName);
   }
 
   /**
@@ -399,7 +407,14 @@ jobs:
       for (const file of filesToCopy) {
         if (filesToUpdate.includes(file.remote)) {
           try {
-            const content = this.readLocalFile(file.local);
+            let content = this.readLocalFile(file.local);
+            
+            // 对需要替换占位符的文件进行处理
+            if (file.remote === 'site/.vitepress/config.ts' || 
+                file.remote === 'scripts/generate-index.js') {
+              content = this.replacePlaceholders(content);
+            }
+            
             files.push({ path: file.remote, content });
           } catch (error) {
             console.warn(`跳过文件 ${file.local}:`, error);

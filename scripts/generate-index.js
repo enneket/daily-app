@@ -100,7 +100,7 @@ async function generateIndex() {
         summary,
         timeEntries,
         wordCount,
-        path: `/daily/docs/${year}/${month}/${day}`
+        path: `/{{REPO_NAME}}/docs/${year}/${month}/${day}`
       });
       
       console.log(`  ✓ ${date}`);
