@@ -1,21 +1,23 @@
 import { defineLoader } from 'vitepress';
-import fs from 'fs';
-import path from 'path';
+import { readFileSync, existsSync } from 'fs';
+import { resolve } from 'path';
+
+declare const data: any[];
+export { data };
 
 export default defineLoader({
-  async load() {
-    const indexPath = path.join(__dirname, 'reports-index.json');
+  watch: ['./reports-index.json'],
+  load() {
+    const filePath = resolve(__dirname, './reports-index.json');
     
-    // 如果索引文件不存在，返回空数组
-    if (!fs.existsSync(indexPath)) {
+    if (!existsSync(filePath)) {
       console.warn('reports-index.json 不存在，返回空数组');
       return [];
     }
     
     try {
-      const content = fs.readFileSync(indexPath, 'utf-8');
-      const data = JSON.parse(content);
-      return Array.isArray(data) ? data : [];
+      const content = readFileSync(filePath, 'utf-8');
+      return JSON.parse(content);
     } catch (error) {
       console.error('读取 reports-index.json 失败:', error);
       return [];
