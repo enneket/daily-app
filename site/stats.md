@@ -1,120 +1,122 @@
+---
+title: 总体统计
+---
+
 # 总体统计
 
+::: info 数据说明
+统计数据每次构建时自动生成，显示您的日报写作情况。
+:::
+
 <script setup>
-import { data as reports } from './.vitepress/reports-index.data';
 import { data as stats } from './.vitepress/stats.data';
 
-const safeReports = Array.isArray(reports) ? reports : [];
-const safeStats = stats || {
-  total: 0,
-  streak: 0,
-  thisYear: 0,
-  thisMonth: 0,
-  totalWords: 0,
-  avgWords: 0,
-  byMonth: {},
-  byYear: {}
-};
-
-// 将对象转换为数组，避免 v-for 遍历对象的问题
-const yearStatsArray = Object.entries(safeStats.byYear || {})
-  .map(([year, count]) => ({ year, count }))
-  .sort((a, b) => b.year.localeCompare(a.year));
-
-const monthStatsArray = Object.entries(safeStats.byMonth || {})
-  .map(([month, count]) => ({ month, count }))
-  .sort((a, b) => b.month.localeCompare(a.month));
-
-const hasTimeRange = safeStats.firstDate && safeStats.lastDate;
+// 安全获取数据
+const total = stats?.total || 0;
+const thisYear = stats?.thisYear || 0;
+const thisMonth = stats?.thisMonth || 0;
+const totalWords = stats?.totalWords || 0;
+const avgWords = stats?.avgWords || 0;
+const firstDate = stats?.firstDate || '';
+const lastDate = stats?.lastDate || '';
+const byYear = stats?.byYear || {};
+const byMonth = stats?.byMonth || {};
 </script>
 
-<ClientOnly>
-<div class="stats-container">
-  <div class="stats-grid">
-    <div class="stat-card large">
-      <div class="stat-icon">📝</div>
-      <div class="stat-value">{{ safeStats.total }}</div>
-      <div class="stat-label">总日报数</div>
-    </div>
-    
-    <div class="stat-card">
-      <div class="stat-value">{{ safeStats.thisYear }}</div>
-      <div class="stat-label">今年日报</div>
-    </div>
-    
-    <div class="stat-card">
-      <div class="stat-value">{{ safeStats.thisMonth }}</div>
-      <div class="stat-label">本月日报</div>
-    </div>
-    
-    <div class="stat-card">
-      <div class="stat-value">{{ safeStats.totalWords.toLocaleString() }}</div>
-      <div class="stat-label">总字数</div>
-    </div>
-    
-    <div class="stat-card">
-      <div class="stat-value">{{ safeStats.avgWords }}</div>
-      <div class="stat-label">平均字数</div>
-    </div>
-  </div>
+## 📊 核心数据
 
-  <h2 v-if="hasTimeRange">时间跨度</h2>
-  <div class="time-range" v-if="hasTimeRange">
-    <div class="range-item">
-      <div class="range-label">第一篇</div>
-      <div class="range-value">{{ safeStats.firstDate }}</div>
-    </div>
-    <div class="range-divider">→</div>
-    <div class="range-item">
-      <div class="range-label">最新一篇</div>
-      <div class="range-value">{{ safeStats.lastDate }}</div>
-    </div>
+<div class="stats-grid">
+  <div class="stat-card large">
+    <div class="stat-icon">📝</div>
+    <div class="stat-value">{{ total }}</div>
+    <div class="stat-label">总日报数</div>
   </div>
-
-  <h2 v-if="yearStatsArray.length > 0">按年统计</h2>
-  <div class="year-stats" v-if="yearStatsArray.length > 0">
-    <div 
-      v-for="item in yearStatsArray" 
-      :key="item.year"
-      class="year-item"
-    >
-      <div class="year-label">{{ item.year }} 年</div>
-      <div class="year-bar">
-        <div 
-          class="year-bar-fill" 
-          :style="{ width: `${(item.count / safeStats.total * 100)}%` }"
-        ></div>
-      </div>
-      <div class="year-count">{{ item.count }} 篇</div>
-    </div>
+  
+  <div class="stat-card">
+    <div class="stat-value">{{ thisYear }}</div>
+    <div class="stat-label">今年日报</div>
   </div>
-
-  <h2 v-if="monthStatsArray.length > 0">按月统计</h2>
-  <div class="month-stats" v-if="monthStatsArray.length > 0">
-    <div 
-      v-for="item in monthStatsArray" 
-      :key="item.month"
-      class="month-item"
-    >
-      <div class="month-label">{{ item.month }}</div>
-      <div class="month-count">{{ item.count }} 篇</div>
-    </div>
+  
+  <div class="stat-card">
+    <div class="stat-value">{{ thisMonth }}</div>
+    <div class="stat-label">本月日报</div>
+  </div>
+  
+  <div class="stat-card">
+    <div class="stat-value">{{ totalWords.toLocaleString() }}</div>
+    <div class="stat-label">总字数</div>
+  </div>
+  
+  <div class="stat-card">
+    <div class="stat-value">{{ avgWords }}</div>
+    <div class="stat-label">平均字数</div>
   </div>
 </div>
-</ClientOnly>
+
+<div v-if="firstDate && lastDate">
+
+## ⏱️ 时间跨度
+
+<div class="time-range">
+  <div class="range-item">
+    <div class="range-label">第一篇</div>
+    <div class="range-value">{{ firstDate }}</div>
+  </div>
+  <div class="range-divider">→</div>
+  <div class="range-item">
+    <div class="range-label">最新一篇</div>
+    <div class="range-value">{{ lastDate }}</div>
+  </div>
+</div>
+
+</div>
+
+<div v-if="Object.keys(byYear).length > 0">
+
+## 📅 按年统计
+
+<div class="year-stats">
+  <div 
+    v-for="(count, year) in byYear" 
+    :key="year"
+    class="year-item"
+  >
+    <div class="year-label">{{ year }} 年</div>
+    <div class="year-bar">
+      <div 
+        class="year-bar-fill" 
+        :style="{ width: (count / total * 100) + '%' }"
+      ></div>
+    </div>
+    <div class="year-count">{{ count }} 篇</div>
+  </div>
+</div>
+
+</div>
+
+<div v-if="Object.keys(byMonth).length > 0">
+
+## 📆 按月统计
+
+<div class="month-stats">
+  <div 
+    v-for="(count, month) in byMonth" 
+    :key="month"
+    class="month-item"
+  >
+    <div class="month-label">{{ month }}</div>
+    <div class="month-count">{{ count }} 篇</div>
+  </div>
+</div>
+
+</div>
 
 <style scoped>
-.stats-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
-  margin-bottom: 3rem;
+  margin: 2rem 0;
 }
 
 .stat-card {
@@ -250,10 +252,6 @@ const hasTimeRange = safeStats.firstDate && safeStats.lastDate;
 }
 
 @media (max-width: 768px) {
-  .stats-container {
-    padding: 1rem;
-  }
-  
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
