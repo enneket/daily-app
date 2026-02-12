@@ -66,12 +66,12 @@ function Settings({ initialConfig, onSave, onCancel }: SettingsProps) {
       if (result.updated && result.updatedFiles && result.updatedFiles.length > 0) {
         setMessage({ 
           type: 'success', 
-          text: `配置已保存！已更新 ${result.updatedFiles.length} 个文件到最新版本 (v1.1.2)。` 
+          text: `配置已保存！已更新 ${result.updatedFiles.length} 个文件到最新版本 (v1.2.0)。` 
         });
       } else if (result.skipped) {
         setMessage({ 
           type: 'success', 
-          text: '配置已保存！仓库已是最新版本 (v1.1.2)，无需更新。' 
+          text: '配置已保存！仓库已是最新版本 (v1.2.0)，无需更新。' 
         });
       } else if (result.initialized) {
         setMessage({ 

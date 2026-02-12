@@ -7,6 +7,15 @@ export default defineConfig({
   
   base: '/daily/',  // 根据你的仓库名修改
   
+  // 启用 Vue 支持
+  vue: {
+    template: {
+      compilerOptions: {
+        isCustomElement: (tag) => false
+      }
+    }
+  },
+  
   themeConfig: {
     logo: '/logo.svg',
     

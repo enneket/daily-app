@@ -22,17 +22,17 @@ class GitHubService {
   private repoConfig?: RepoConfig;
   
   // 版本管理
-  private readonly CURRENT_VERSION = '1.1.2';
+  private readonly CURRENT_VERSION = '1.2.0';
   private readonly FILE_VERSIONS: Record<string, string> = {
-    'site/.vitepress/config.ts': '1.1.0',
+    'site/.vitepress/config.ts': '1.1.3',
     'site/.vitepress/reports-index.data.ts': '1.1.0',
     'site/.vitepress/stats.data.ts': '1.1.0',
     'site/.vitepress/reports-index.json': '1.1.0',
     'site/.vitepress/stats.json': '1.1.0',
     'site/index.md': '1.1.0',
-    'site/calendar.md': '1.1.2',
-    'site/archive.md': '1.1.0',
-    'site/stats.md': '1.1.0',
+    'site/calendar.md': '1.2.0',
+    'site/archive.md': '1.2.0',
+    'site/stats.md': '1.2.0',
     'site/latest.md': '1.1.0',
     'scripts/generate-index.js': '1.1.0',
     'package.json': '1.1.0',

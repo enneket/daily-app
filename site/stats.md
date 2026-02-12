@@ -1,9 +1,8 @@
-# 统计
+# 总体统计
 
 <script setup>
-import { computed } from 'vue';
-import { data as stats } from './.vitepress/stats.data';
 import { data as reports } from './.vitepress/reports-index.data';
+import { data as stats } from './.vitepress/stats.data';
 
 const safeReports = Array.isArray(reports) ? reports : [];
 const safeStats = stats || {
@@ -14,192 +13,103 @@ const safeStats = stats || {
   totalWords: 0,
   avgWords: 0,
   byMonth: {},
-  byYear: {},
-  firstDate: '',
-  lastDate: ''
+  byYear: {}
 };
-
-// 计算平均每天字数
-const avgWordsPerDay = computed(() => {
-  if (safeStats.total === 0) return 0;
-  return Math.round(safeStats.totalWords / safeStats.total);
-});
-
-// 按年份统计
-const yearStats = computed(() => {
-  return Object.entries(safeStats.byYear)
-    .map(([year, count]) => ({ year, count }))
-    .sort((a, b) => b.year.localeCompare(a.year));
-});
-
-// 按月份统计（最近12个月）
-const monthStats = computed(() => {
-  return Object.entries(safeStats.byMonth)
-    .map(([month, count]) => ({ month, count }))
-    .sort((a, b) => b.month.localeCompare(a.month))
-    .slice(0, 12);
-});
-
-// 最长的日报
-const longestReport = computed(() => {
-  if (safeReports.length === 0) return null;
-  return [...safeReports].sort((a, b) => b.wordCount - a.wordCount)[0];
-});
-
-// 最短的日报
-const shortestReport = computed(() => {
-  if (safeReports.length === 0) return null;
-  return [...safeReports].sort((a, b) => a.wordCount - b.wordCount)[0];
-});
-
-// 计算完成率（本月）
-const thisMonthCompletion = computed(() => {
-  const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const currentDay = now.getDate();
-  return Math.round((safeStats.thisMonth / currentDay) * 100);
-});
 </script>
 
 <div class="stats-container">
-  <h2>总体统计</h2>
-  
   <div class="stats-grid">
     <div class="stat-card large">
       <div class="stat-icon">📝</div>
-      <div class="stat-value">{{ safeStats.total || 0 }}</div>
+      <div class="stat-value">{{ safeStats.total }}</div>
       <div class="stat-label">总日报数</div>
     </div>
     
-    <div class="stat-card large">
-      <div class="stat-icon">🔥</div>
-      <div class="stat-value">{{ safeStats.streak || 0 }}</div>
-      <div class="stat-label">连续天数</div>
-    </div>
-    
     <div class="stat-card">
-      <div class="stat-value">{{ safeStats.thisYear || 0 }}</div>
+      <div class="stat-value">{{ safeStats.thisYear }}</div>
       <div class="stat-label">今年日报</div>
     </div>
     
     <div class="stat-card">
-      <div class="stat-value">{{ safeStats.thisMonth || 0 }}</div>
+      <div class="stat-value">{{ safeStats.thisMonth }}</div>
       <div class="stat-label">本月日报</div>
     </div>
     
     <div class="stat-card">
-      <div class="stat-value">{{ (safeStats.totalWords || 0).toLocaleString() }}</div>
+      <div class="stat-value">{{ safeStats.totalWords.toLocaleString() }}</div>
       <div class="stat-label">总字数</div>
     </div>
     
     <div class="stat-card">
-      <div class="stat-value">{{ safeStats.avgWords || 0 }}</div>
+      <div class="stat-value">{{ safeStats.avgWords }}</div>
       <div class="stat-label">平均字数</div>
     </div>
   </div>
-  
+
   <h2>时间跨度</h2>
-  <div class="time-range" v-if="stats.firstDate && stats.lastDate">
-    <div class="time-item">
-      <div class="time-label">第一篇</div>
-      <div class="time-value">{{ stats.firstDate }}</div>
+  <div class="time-range" v-if="safeStats.firstDate && safeStats.lastDate">
+    <div class="range-item">
+      <div class="range-label">第一篇</div>
+      <div class="range-value">{{ safeStats.firstDate }}</div>
     </div>
-    <div class="time-arrow">→</div>
-    <div class="time-item">
-      <div class="time-label">最新一篇</div>
-      <div class="time-value">{{ stats.lastDate }}</div>
-    </div>
-  </div>
-  <div v-else class="no-data">暂无数据</div>
-  
-  <h2>本月完成率</h2>
-  <div class="completion-bar" v-if="stats.thisMonth !== undefined">
-    <div class="completion-fill" :style="{ width: thisMonthCompletion + '%' }">
-      {{ thisMonthCompletion }}%
+    <div class="range-divider">→</div>
+    <div class="range-item">
+      <div class="range-label">最新一篇</div>
+      <div class="range-value">{{ safeStats.lastDate }}</div>
     </div>
   </div>
-  <p class="completion-text">
-    本月已完成 {{ stats.thisMonth || 0 }} 篇日报
-  </p>
-  
-  <h2>按年份统计</h2>
+
+  <h2>按年统计</h2>
   <div class="year-stats">
-    <div v-for="item in yearStats" :key="item.year" class="year-item">
-      <div class="year-label">{{ item.year }} 年</div>
+    <div 
+      v-for="(count, year) in safeStats.byYear" 
+      :key="year"
+      class="year-item"
+    >
+      <div class="year-label">{{ year }} 年</div>
       <div class="year-bar">
         <div 
-          class="year-fill" 
-          :style="{ width: (item.count / stats.total * 100) + '%' }"
+          class="year-bar-fill" 
+          :style="{ width: `${(count / safeStats.total * 100)}%` }"
         ></div>
       </div>
-      <div class="year-count">{{ item.count }} 篇</div>
+      <div class="year-count">{{ count }} 篇</div>
     </div>
   </div>
-  
-  <h2>最近12个月</h2>
+
+  <h2>按月统计</h2>
   <div class="month-stats">
-    <div v-for="item in monthStats" :key="item.month" class="month-item">
-      <div class="month-label">{{ item.month }}</div>
-      <div class="month-bar">
-        <div 
-          class="month-fill" 
-          :style="{ width: (item.count / 31 * 100) + '%' }"
-        ></div>
-      </div>
-      <div class="month-count">{{ item.count }}</div>
+    <div 
+      v-for="(count, month) in safeStats.byMonth" 
+      :key="month"
+      class="month-item"
+    >
+      <div class="month-label">{{ month }}</div>
+      <div class="month-count">{{ count }} 篇</div>
     </div>
   </div>
-  
-  <h2>记录</h2>
-  <div class="records" v-if="longestReport && shortestReport">
-    <div class="record-card">
-      <div class="record-title">📏 最长日报</div>
-      <div class="record-content">
-        <a :href="longestReport.path">{{ longestReport.title }}</a>
-        <span class="record-value">{{ longestReport.wordCount }} 字</span>
-      </div>
-    </div>
-    
-    <div class="record-card">
-      <div class="record-title">📐 最短日报</div>
-      <div class="record-content">
-        <a :href="shortestReport.path">{{ shortestReport.title }}</a>
-        <span class="record-value">{{ shortestReport.wordCount }} 字</span>
-      </div>
-    </div>
-  </div>
-  <div v-else class="no-data">暂无数据</div>
 </div>
 
 <style scoped>
 .stats-container {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
 }
 
-.stats-container h2 {
-  margin: 3rem 0 1.5rem 0;
-  color: var(--vp-c-brand-1);
-}
-
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
 }
 
 .stat-card {
-  padding: 1.5rem;
+  padding: 2rem;
   background: var(--vp-c-bg-soft);
   border-radius: 12px;
   text-align: center;
-  transition: all 0.2s;
-}
-
-.stat-card.large {
-  grid-column: span 2;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .stat-card:hover {
@@ -207,20 +117,20 @@ const thisMonthCompletion = computed(() => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+.stat-card.large {
+  grid-column: span 2;
+}
+
 .stat-icon {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
+  font-size: 3rem;
+  margin-bottom: 1rem;
 }
 
 .stat-value {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: bold;
   color: var(--vp-c-brand-1);
   line-height: 1;
-}
-
-.stat-card.large .stat-value {
-  font-size: 3rem;
 }
 
 .stat-label {
@@ -237,134 +147,93 @@ const thisMonthCompletion = computed(() => {
   padding: 2rem;
   background: var(--vp-c-bg-soft);
   border-radius: 12px;
+  margin: 2rem 0;
 }
 
-.time-item {
+.range-item {
   text-align: center;
 }
 
-.time-label {
+.range-label {
   font-size: 0.875rem;
   color: var(--vp-c-text-2);
   margin-bottom: 0.5rem;
 }
 
-.time-value {
+.range-value {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--vp-c-brand-1);
 }
 
-.time-arrow {
+.range-divider {
   font-size: 2rem;
   color: var(--vp-c-text-3);
 }
 
-.completion-bar {
-  height: 40px;
-  background: var(--vp-c-bg-soft);
-  border-radius: 20px;
-  overflow: hidden;
-  position: relative;
+.year-stats {
+  margin: 2rem 0;
 }
 
-.completion-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--vp-c-brand-1), var(--vp-c-brand-2));
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 1rem;
-  color: white;
-  font-weight: 600;
-  transition: width 0.5s ease;
-}
-
-.completion-text {
-  text-align: center;
-  margin-top: 0.5rem;
-  color: var(--vp-c-text-2);
-  font-size: 0.875rem;
-}
-
-.year-stats, .month-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.year-item, .month-item {
+.year-item {
   display: grid;
   grid-template-columns: 100px 1fr 80px;
   align-items: center;
   gap: 1rem;
-  padding: 0.75rem;
+  padding: 1rem;
   background: var(--vp-c-bg-soft);
   border-radius: 8px;
+  margin-bottom: 0.75rem;
 }
 
-.year-label, .month-label {
+.year-label {
   font-weight: 600;
   color: var(--vp-c-text-1);
 }
 
-.year-bar, .month-bar {
+.year-bar {
   height: 24px;
   background: var(--vp-c-default-soft);
   border-radius: 12px;
   overflow: hidden;
 }
 
-.year-fill, .month-fill {
+.year-bar-fill {
   height: 100%;
   background: var(--vp-c-brand-1);
-  transition: width 0.5s ease;
+  transition: width 0.3s;
 }
 
-.year-count, .month-count {
+.year-count {
   text-align: right;
   font-weight: 600;
   color: var(--vp-c-brand-1);
 }
 
-.records {
+.month-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
 }
 
-.record-card {
-  padding: 1.5rem;
+.month-item {
+  padding: 1rem;
   background: var(--vp-c-bg-soft);
-  border-radius: 12px;
+  border-radius: 8px;
+  text-align: center;
 }
 
-.record-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: var(--vp-c-text-1);
-}
-
-.record-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.record-content a {
-  color: var(--vp-c-brand-1);
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.record-content a:hover {
-  color: var(--vp-c-brand-2);
-}
-
-.record-value {
+.month-label {
   font-size: 0.875rem;
   color: var(--vp-c-text-2);
+  margin-bottom: 0.5rem;
+}
+
+.month-count {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--vp-c-brand-1);
 }
 
 @media (max-width: 768px) {
@@ -377,7 +246,7 @@ const thisMonthCompletion = computed(() => {
   }
   
   .stat-card.large {
-    grid-column: span 1;
+    grid-column: span 2;
   }
   
   .time-range {
@@ -385,13 +254,17 @@ const thisMonthCompletion = computed(() => {
     gap: 1rem;
   }
   
-  .time-arrow {
+  .range-divider {
     transform: rotate(90deg);
   }
   
-  .year-item, .month-item {
+  .year-item {
     grid-template-columns: 80px 1fr 60px;
     gap: 0.5rem;
+  }
+  
+  .month-stats {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>
