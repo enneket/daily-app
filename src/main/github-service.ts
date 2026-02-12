@@ -112,7 +112,6 @@ class GitHubService {
         'preview:site': 'vitepress preview site'
       },
       devDependencies: {
-        'fs-extra': '^11.2.0',
         'vitepress': '^1.0.0'
       }
     };

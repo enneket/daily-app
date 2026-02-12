@@ -1,5 +1,6 @@
-import fs from 'fs-extra';
-import path from 'path';
+import { readdir, readFile, writeFile, mkdir, access } from 'fs/promises';
+import { join } from 'path';
+import { constants } from 'fs';
 
 /**
  * 生成日报索引
@@ -12,20 +13,22 @@ async function generateIndex() {
   const reports = [];
   
   // 检查 docs 目录是否存在
-  if (!await fs.pathExists(reportsDir)) {
+  try {
+    await access(reportsDir, constants.F_OK);
+  } catch {
     console.log('docs 目录不存在，创建空索引');
-    await fs.ensureDir('site/.vitepress');
-    await fs.writeJson('site/.vitepress/reports-index.json', [], { spaces: 2 });
-    await fs.writeJson('site/.vitepress/stats.json', generateStats([]), { spaces: 2 });
+    await mkdir('site/.vitepress', { recursive: true });
+    await writeFile('site/.vitepress/reports-index.json', JSON.stringify([], null, 2));
+    await writeFile('site/.vitepress/stats.json', JSON.stringify(generateStats([]), null, 2));
     return;
   }
   
   // 递归扫描日报文件
   async function scanReports(dir) {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const entries = await readdir(dir, { withFileTypes: true });
     
     for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
+      const fullPath = join(dir, entry.name);
       
       // 跳过特殊目录
       if (entry.name.startsWith('.') || 
@@ -46,24 +49,24 @@ async function generateIndex() {
   
   // 扫描年份目录
   async function scanYear(yearPath, year) {
-    const months = await fs.readdir(yearPath, { withFileTypes: true });
+    const months = await readdir(yearPath, { withFileTypes: true });
     
     for (const month of months) {
       if (month.isDirectory() && /^\d{2}$/.test(month.name)) {
-        await scanMonth(path.join(yearPath, month.name), year, month.name);
+        await scanMonth(join(yearPath, month.name), year, month.name);
       }
     }
   }
   
   // 扫描月份目录
   async function scanMonth(monthPath, year, month) {
-    const files = await fs.readdir(monthPath);
+    const files = await readdir(monthPath);
     
     for (const file of files) {
       if (file.endsWith('.md')) {
-        const day = path.basename(file, '.md');
+        const day = file.replace('.md', '');
         if (/^\d{2}$/.test(day)) {
-          await processReport(path.join(monthPath, file), year, month, day);
+          await processReport(join(monthPath, file), year, month, day);
         }
       }
     }
@@ -72,7 +75,7 @@ async function generateIndex() {
   // 处理单个日报文件
   async function processReport(filePath, year, month, day) {
     try {
-      const content = await fs.readFile(filePath, 'utf-8');
+      const content = await readFile(filePath, 'utf-8');
       const date = `${year}-${month}-${day}`;
       
       // 提取标题
@@ -173,16 +176,18 @@ async function generateIndex() {
   const stats = generateStats(reports);
   
   // 确保输出目录存在
-  await fs.ensureDir('site/.vitepress');
+  await mkdir('site/.vitepress', { recursive: true });
   
   // 写入索引文件
-  await fs.writeJson('site/.vitepress/reports-index.json', reports, { spaces: 2 });
-  await fs.writeJson('site/.vitepress/stats.json', stats, { spaces: 2 });
+  await writeFile('site/.vitepress/reports-index.json', JSON.stringify(reports, null, 2));
+  await writeFile('site/.vitepress/stats.json', JSON.stringify(stats, null, 2));
   
   console.log(`\n✓ 索引生成完成！`);
   console.log(`  - 总日报数: ${reports.length}`);
   console.log(`  - 连续天数: ${stats.streak}`);
   console.log(`  - 总字数: ${stats.totalWords.toLocaleString()}`);
+  console.log(`  - 索引文件: site/.vitepress/reports-index.json`);
+  console.log(`  - 统计文件: site/.vitepress/stats.json`);
 }
 
 /**
