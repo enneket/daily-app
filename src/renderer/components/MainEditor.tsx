@@ -88,7 +88,7 @@ function MainEditor({ onOpenSettings }: MainEditorProps) {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="输入今天的工作内容...&#10;&#10;支持 Markdown 格式&#10;快捷键：Cmd/Ctrl + Enter 提交"
+          placeholder="输入今天的思考、想法等等...&#10;&#10;支持 Markdown 格式&#10;快捷键：Cmd/Ctrl + Enter 提交"
           className="flex-1 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
 
