@@ -73,12 +73,14 @@
         "dmg"
       ],
       "category": "public.app-category.productivity",
-      "identity": null
+      "identity": null,
+      "icon": "build/icon.icns"
     },
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "icon": "build/icon.ico"
     },
     "linux": {
       "target": [
@@ -86,7 +88,8 @@
         "deb"
       ],
       "category": "enneket",
-      "maintainer": "Your Name <zhao.jiaxing@qq.com>"
+      "maintainer": "Your Name <zhao.jiaxing@qq.com>",
+      "icon": "build/icon.png"
     }
   }
 }
