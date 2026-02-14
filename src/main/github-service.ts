@@ -22,9 +22,9 @@ class GitHubService {
   private repoConfig?: RepoConfig;
   
   // 版本管理
-  private readonly CURRENT_VERSION = '1.2.6';
+  private readonly CURRENT_VERSION = '1.2.7';
   private readonly FILE_VERSIONS: Record<string, string> = {
-    'site/.vitepress/config.ts': '1.2.5',
+    'site/.vitepress/config.ts': '1.2.7',
     'site/.vitepress/reports-index.data.ts': '1.1.0',
     'site/.vitepress/stats.data.ts': '1.1.0',
     'site/.vitepress/reports-index.json': '1.1.0',
@@ -34,6 +34,7 @@ class GitHubService {
     'site/archive.md': '1.2.0',
     'site/stats.md': '1.2.6',
     'site/latest.md': '1.1.0',
+    'site/public/favicon.png': '1.2.7',
     'scripts/generate-index.js': '1.2.4',
     'scripts/migrate-reports.js': '1.2.3',
     'package.json': '1.1.0',
@@ -288,6 +289,9 @@ class GitHubService {
       { local: 'site/archive.md', remote: 'site/archive.md' },
       { local: 'site/stats.md', remote: 'site/stats.md' },
       { local: 'site/latest.md', remote: 'site/latest.md' },
+      
+      // 静态资源
+      { local: 'site/public/favicon.png', remote: 'site/public/favicon.png' },
       
       // 脚本
       { local: 'scripts/generate-index.js', remote: 'scripts/generate-index.js' },
