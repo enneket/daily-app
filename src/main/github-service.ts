@@ -138,8 +138,13 @@ class GitHubService {
   /**
    * 读取本地文件内容
    */
-  private readLocalFile(relativePath: string): string {
+  private readLocalFile(relativePath: string): string | Buffer {
     const filePath = pathModule.join(__dirname, '../../', relativePath);
+    // 判断是否为二进制文件（图片等）
+    const isBinary = /\.(png|jpg|jpeg|gif|ico|icns|svg|webp)$/i.test(relativePath);
+    if (isBinary) {
+      return fsModule.readFileSync(filePath);
+    }
     return fsModule.readFileSync(filePath, 'utf-8');
   }
   /**
@@ -405,7 +410,7 @@ jobs:
 
     try {
       // 批量创建文件
-      const files: Array<{ path: string; content: string }> = [];
+      const files: Array<{ path: string; content: string | Buffer }> = [];
 
       // 复制本地文件
       for (const file of filesToCopy) {
@@ -413,9 +418,10 @@ jobs:
           try {
             let content = this.readLocalFile(file.local);
             
-            // 对需要替换占位符的文件进行处理
-            if (file.remote === 'site/.vitepress/config.ts' || 
-                file.remote === 'scripts/generate-index.js') {
+            // 对需要替换占位符的文件进行处理（只处理文本文件）
+            if (typeof content === 'string' && 
+                (file.remote === 'site/.vitepress/config.ts' || 
+                 file.remote === 'scripts/generate-index.js')) {
               content = this.replacePlaceholders(content);
             }
             
@@ -465,7 +471,9 @@ jobs:
             repo: this.config.repoName,
             path: file.path,
             message: `Update: ${file.path} to v${this.CURRENT_VERSION}`,
-            content: Buffer.from(file.content).toString('base64'),
+            content: Buffer.isBuffer(file.content) 
+              ? file.content.toString('base64')
+              : Buffer.from(file.content).toString('base64'),
             branch: this.config.branch,
             sha: sha,
           });
