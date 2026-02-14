@@ -15,12 +15,18 @@ function createWindow() {
   console.log('preload exists:', require('fs').existsSync(preloadPath));
   console.log('==================');
   
+  // 设置窗口图标
+  const iconPath = process.platform === 'win32'
+    ? path.join(__dirname, '../../build/icon.ico')
+    : path.join(__dirname, '../../build/icon.png');
+  
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     minWidth: 600,
     minHeight: 500,
     autoHideMenuBar: true,  // 隐藏菜单栏
+    icon: iconPath,  // 设置窗口图标
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
