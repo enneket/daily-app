@@ -26,11 +26,12 @@ function createWindow() {
       : path.join(__dirname, '../../build/icon.png');
   } else {
     // 生产模式：从打包后的资源目录读取
+    const resourcesPath = (process as any).resourcesPath || path.join(__dirname, '../..');
     iconPath = process.platform === 'win32'
-      ? path.join(process.resourcesPath, 'build/icon.ico')
+      ? path.join(resourcesPath, 'build/icon.ico')
       : process.platform === 'darwin'
-      ? path.join(process.resourcesPath, 'build/icon.icns')
-      : path.join(process.resourcesPath, 'build/icon.png');
+      ? path.join(resourcesPath, 'build/icon.icns')
+      : path.join(resourcesPath, 'build/icon.png');
   }
   
   console.log('Icon path:', iconPath);
