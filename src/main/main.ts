@@ -11,6 +11,7 @@ function createWindow() {
   const preloadPath = path.join(__dirname, 'preload.js');
   console.log('=== Debug Info ===');
   console.log('__dirname:', __dirname);
+  console.log('app.getAppPath():', app.getAppPath());
   console.log('preload path:', preloadPath);
   console.log('preload exists:', require('fs').existsSync(preloadPath));
   console.log('==================');
@@ -18,13 +19,13 @@ function createWindow() {
   // 设置窗口图标
   let iconPath: string;
   if (process.env.NODE_ENV === 'development') {
-    // 开发模式：使用绝对路径
-    const projectRoot = path.resolve(__dirname, '../..');
+    // 开发模式：使用 app.getAppPath() 获取应用根目录
+    const appPath = app.getAppPath();
     iconPath = process.platform === 'win32'
-      ? path.join(projectRoot, 'build/icon.ico')
+      ? path.join(appPath, 'build/icon.ico')
       : process.platform === 'darwin'
-      ? path.join(projectRoot, 'build/icon.icns')
-      : path.join(projectRoot, 'build/icon.png');
+      ? path.join(appPath, 'build/icon.icns')
+      : path.join(appPath, 'build/icon.png');
   } else {
     // 生产模式：从打包后的资源目录读取
     const resourcesPath = (process as any).resourcesPath || path.join(__dirname, '../..');
@@ -42,7 +43,9 @@ function createWindow() {
   // 使用 nativeImage 加载图标
   const icon = nativeImage.createFromPath(iconPath);
   console.log('Icon loaded:', !icon.isEmpty());
-  console.log('Icon size:', icon.getSize());
+  if (!icon.isEmpty()) {
+    console.log('Icon size:', icon.getSize());
+  }
   
   mainWindow = new BrowserWindow({
     width: 800,
@@ -69,7 +72,16 @@ function createWindow() {
   
   // 平台特殊处理
   if (process.platform === 'linux') {
+    // Linux/WSL 需要额外设置图标
     mainWindow.setIcon(icon);
+    // 尝试设置应用级图标
+    if (!icon.isEmpty()) {
+      try {
+        app.setIcon(icon);
+      } catch (e) {
+        console.log('Failed to set app icon:', e);
+      }
+    }
   } else if (process.platform === 'win32') {
     // Windows 需要额外设置应用图标
     mainWindow.setIcon(icon);
