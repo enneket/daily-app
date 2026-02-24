@@ -62,9 +62,15 @@
       "dist/**/*",
       "site/**/*",
       "scripts/**/*",
-      "build/**/*",
       "docs/日报仓库README模板.md",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build",
+        "to": "build",
+        "filter": ["**/*"]
+      }
     ],
     "asar": true,
     "compression": "maximum",

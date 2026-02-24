@@ -9,15 +9,33 @@ let GitHubServiceClass: any;
 
 function createWindow() {
   const preloadPath = path.join(__dirname, 'preload.js');
-  console.log('=== Debug Info ===');
-  console.log('__dirname:', __dirname);
-  console.log('app.getAppPath():', app.getAppPath());
-  console.log('preload path:', preloadPath);
-  console.log('preload exists:', require('fs').existsSync(preloadPath));
-  console.log('==================');
+  const fs = require('fs');
+  
+  // 创建日志函数
+  const logFile = path.join(app.getPath('userData'), 'icon-debug.log');
+  const log = (msg: string) => {
+    const timestamp = new Date().toISOString();
+    const logMsg = `[${timestamp}] ${msg}\n`;
+    console.log(msg);
+    try {
+      fs.appendFileSync(logFile, logMsg);
+    } catch (e) {
+      // 忽略写入错误
+    }
+  };
+  
+  log('=== Debug Info ===');
+  log('__dirname: ' + __dirname);
+  log('app.getAppPath(): ' + app.getAppPath());
+  log('app.getPath(userData): ' + app.getPath('userData'));
+  log('preload path: ' + preloadPath);
+  log('preload exists: ' + fs.existsSync(preloadPath));
+  log('Log file: ' + logFile);
+  log('==================');
   
   // 设置窗口图标
   let iconPath: string;
+  
   if (process.env.NODE_ENV === 'development') {
     // 开发模式：使用 app.getAppPath() 获取应用根目录
     const appPath = app.getAppPath();
@@ -27,24 +45,37 @@ function createWindow() {
       ? path.join(appPath, 'build/icon.icns')
       : path.join(appPath, 'build/icon.png');
   } else {
-    // 生产模式：从打包后的资源目录读取
-    const resourcesPath = (process as any).resourcesPath || path.join(__dirname, '../..');
-    iconPath = process.platform === 'win32'
-      ? path.join(resourcesPath, 'build/icon.ico')
-      : process.platform === 'darwin'
-      ? path.join(resourcesPath, 'build/icon.icns')
-      : path.join(resourcesPath, 'build/icon.png');
+    // 生产模式：尝试多个可能的路径
+    const iconName = process.platform === 'win32' ? 'icon.ico'
+      : process.platform === 'darwin' ? 'icon.icns'
+      : 'icon.png';
+    
+    const possiblePaths = [
+      // 方式1：从 resources 目录
+      path.join((process as any).resourcesPath || '', 'build', iconName),
+      // 方式2：从 app.asar 同级目录
+      path.join(path.dirname(app.getPath('exe')), 'resources', 'build', iconName),
+      // 方式3：从 app.getAppPath()
+      path.join(app.getAppPath(), 'build', iconName),
+      // 方式4：相对于 __dirname
+      path.join(__dirname, '../../build', iconName),
+    ];
+    
+    // 尝试找到存在的图标文件
+    iconPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
+    log('Tried paths: ' + JSON.stringify(possiblePaths, null, 2));
+    log('Selected path: ' + iconPath);
   }
   
-  console.log('Platform:', process.platform);
-  console.log('Icon path:', iconPath);
-  console.log('Icon exists:', require('fs').existsSync(iconPath));
+  log('Platform: ' + process.platform);
+  log('Icon path: ' + iconPath);
+  log('Icon exists: ' + fs.existsSync(iconPath));
   
   // 使用 nativeImage 加载图标
   const icon = nativeImage.createFromPath(iconPath);
-  console.log('Icon loaded:', !icon.isEmpty());
+  log('Icon loaded: ' + !icon.isEmpty());
   if (!icon.isEmpty()) {
-    console.log('Icon size:', icon.getSize());
+    log('Icon size: ' + JSON.stringify(icon.getSize()));
   }
   
   mainWindow = new BrowserWindow({
