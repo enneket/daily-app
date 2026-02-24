@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeImage } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 
@@ -18,12 +18,13 @@ function createWindow() {
   // 设置窗口图标
   let iconPath: string;
   if (process.env.NODE_ENV === 'development') {
-    // 开发模式：从项目根目录的 build 文件夹读取
+    // 开发模式：使用绝对路径
+    const projectRoot = path.resolve(__dirname, '../..');
     iconPath = process.platform === 'win32'
-      ? path.join(__dirname, '../../build/icon.ico')
+      ? path.join(projectRoot, 'build/icon.ico')
       : process.platform === 'darwin'
-      ? path.join(__dirname, '../../build/icon.icns')
-      : path.join(__dirname, '../../build/icon.png');
+      ? path.join(projectRoot, 'build/icon.icns')
+      : path.join(projectRoot, 'build/icon.png');
   } else {
     // 生产模式：从打包后的资源目录读取
     const resourcesPath = (process as any).resourcesPath || path.join(__dirname, '../..');
@@ -34,8 +35,14 @@ function createWindow() {
       : path.join(resourcesPath, 'build/icon.png');
   }
   
+  console.log('Platform:', process.platform);
   console.log('Icon path:', iconPath);
   console.log('Icon exists:', require('fs').existsSync(iconPath));
+  
+  // 使用 nativeImage 加载图标
+  const icon = nativeImage.createFromPath(iconPath);
+  console.log('Icon loaded:', !icon.isEmpty());
+  console.log('Icon size:', icon.getSize());
   
   mainWindow = new BrowserWindow({
     width: 800,
@@ -43,7 +50,7 @@ function createWindow() {
     minWidth: 600,
     minHeight: 500,
     autoHideMenuBar: true,  // 隐藏菜单栏
-    icon: iconPath,  // 设置窗口图标
+    icon: icon,  // 使用 nativeImage 对象
     title: '日报助手',  // 设置窗口标题
     webPreferences: {
       preload: preloadPath,
@@ -58,6 +65,14 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+  }
+  
+  // 平台特殊处理
+  if (process.platform === 'linux') {
+    mainWindow.setIcon(icon);
+  } else if (process.platform === 'win32') {
+    // Windows 需要额外设置应用图标
+    mainWindow.setIcon(icon);
   }
   
   // 监听 preload 脚本错误
