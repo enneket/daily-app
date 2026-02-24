@@ -10,8 +10,8 @@ hero:
       text: 查看最新
       link: /latest
     - theme: alt
-      text: 日历视图
-      link: /calendar
+      text: 归档浏览
+      link: /archive
 ---
 
 <script setup>

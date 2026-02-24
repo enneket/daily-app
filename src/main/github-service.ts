@@ -22,15 +22,14 @@ class GitHubService {
   private repoConfig?: RepoConfig;
   
   // 版本管理
-  private readonly CURRENT_VERSION = '1.2.7';
+  private readonly CURRENT_VERSION = '1.0.3';
   private readonly FILE_VERSIONS: Record<string, string> = {
-    'site/.vitepress/config.ts': '1.2.7',
+    'site/.vitepress/config.ts': '1.0.3',
     'site/.vitepress/reports-index.data.ts': '1.1.0',
     'site/.vitepress/stats.data.ts': '1.1.0',
     'site/.vitepress/reports-index.json': '1.1.0',
     'site/.vitepress/stats.json': '1.1.0',
-    'site/index.md': '1.1.0',
-    'site/calendar.md': '1.2.0',
+    'site/index.md': '1.0.3',
     'site/archive.md': '1.2.0',
     'site/stats.md': '1.2.6',
     'site/latest.md': '1.1.0',
@@ -157,6 +156,48 @@ class GitHubService {
   }
 
   /**
+   * 清理已移除的文件
+   */
+  private async cleanupRemovedFiles(): Promise<void> {
+    const removedFiles = [
+      'site/calendar.md',
+      'site/calendar-simple.md',
+      'site/calendar-complex.md.bak'
+    ];
+    
+    console.log('检查并清理已移除的文件...');
+    
+    for (const filePath of removedFiles) {
+      try {
+        const { data } = await this.octokit.repos.getContent({
+          owner: this.config.repoOwner,
+          repo: this.config.repoName,
+          path: filePath,
+          ref: this.config.branch,
+        });
+        
+        if ('sha' in data) {
+          await this.octokit.repos.deleteFile({
+            owner: this.config.repoOwner,
+            repo: this.config.repoName,
+            path: filePath,
+            message: `Remove deprecated file: ${filePath}`,
+            sha: data.sha,
+            branch: this.config.branch,
+          });
+          console.log(`  ✓ 已删除: ${filePath}`);
+        }
+      } catch (error: any) {
+        if (error.status === 404) {
+          // 文件不存在，无需删除
+        } else {
+          console.warn(`清理文件失败 ${filePath}:`, error.message);
+        }
+      }
+    }
+  }
+
+  /**
    * 迁移旧的日报文件从 docs/ 到 site/docs/
    */
   private async migrateOldReports(): Promise<void> {
@@ -279,6 +320,9 @@ class GitHubService {
     
     // 检查并迁移旧的日报文件
     await this.migrateOldReports();
+    
+    // 清理已移除的文件
+    await this.cleanupRemovedFiles();
 
     const filesToCopy = [
       // 网站配置
@@ -290,7 +334,6 @@ class GitHubService {
       
       // 网站页面
       { local: 'site/index.md', remote: 'site/index.md' },
-      { local: 'site/calendar.md', remote: 'site/calendar.md' },
       { local: 'site/archive.md', remote: 'site/archive.md' },
       { local: 'site/stats.md', remote: 'site/stats.md' },
       { local: 'site/latest.md', remote: 'site/latest.md' },
