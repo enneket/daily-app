@@ -16,9 +16,25 @@ function createWindow() {
   console.log('==================');
   
   // 设置窗口图标
-  const iconPath = process.platform === 'win32'
-    ? path.join(__dirname, '../../build/icon.ico')
-    : path.join(__dirname, '../../build/icon.png');
+  let iconPath: string;
+  if (process.env.NODE_ENV === 'development') {
+    // 开发模式：从项目根目录的 build 文件夹读取
+    iconPath = process.platform === 'win32'
+      ? path.join(__dirname, '../../build/icon.ico')
+      : process.platform === 'darwin'
+      ? path.join(__dirname, '../../build/icon.icns')
+      : path.join(__dirname, '../../build/icon.png');
+  } else {
+    // 生产模式：从打包后的资源目录读取
+    iconPath = process.platform === 'win32'
+      ? path.join(process.resourcesPath, 'build/icon.ico')
+      : process.platform === 'darwin'
+      ? path.join(process.resourcesPath, 'build/icon.icns')
+      : path.join(process.resourcesPath, 'build/icon.png');
+  }
+  
+  console.log('Icon path:', iconPath);
+  console.log('Icon exists:', require('fs').existsSync(iconPath));
   
   mainWindow = new BrowserWindow({
     width: 800,
@@ -27,6 +43,7 @@ function createWindow() {
     minHeight: 500,
     autoHideMenuBar: true,  // 隐藏菜单栏
     icon: iconPath,  // 设置窗口图标
+    title: '日报助手',  // 设置窗口标题
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
