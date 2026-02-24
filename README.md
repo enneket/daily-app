@@ -2,7 +2,7 @@
 
 一个跨平台桌面应用，用于快速编写和提交日报到 GitHub 仓库，并自动生成精美的日报展示网站。
 
-[![Version](https://img.shields.io/badge/version-1.0.2-blue.svg)](https://github.com/enneket/daily-app/releases)
+[![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)](https://github.com/enneket/daily-app/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/enneket/daily-app/releases)
 
@@ -123,7 +123,7 @@ daily-app/
 
 查看 [CHANGELOG.md](./CHANGELOG.md) 了解完整的版本历史和更新内容。
 
-**当前版本**：v1.0.2
+**当前版本**：v1.0.3
 
 ## 🤝 贡献
 
