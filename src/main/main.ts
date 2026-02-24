@@ -124,19 +124,38 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
-  // 动态加载 GitHubService 避免编译时冲突
-  const githubServiceModule = require('./github-service');
-  GitHubServiceClass = githubServiceModule.GitHubService;
-  
-  createWindow();
+// 单实例锁定
+const gotTheLock = app.requestSingleInstanceLock();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+if (!gotTheLock) {
+  // 如果获取锁失败，说明已有实例在运行，退出当前实例
+  app.quit();
+} else {
+  // 当第二个实例尝试启动时触发
+  app.on('second-instance', (_event: any, _commandLine: any, _workingDirectory: any) => {
+    // 如果主窗口存在，聚焦它
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.focus();
     }
   });
-});
+
+  app.whenReady().then(() => {
+    // 动态加载 GitHubService 避免编译时冲突
+    const githubServiceModule = require('./github-service');
+    GitHubServiceClass = githubServiceModule.GitHubService;
+    
+    createWindow();
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      }
+    });
+  });
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
