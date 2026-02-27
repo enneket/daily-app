@@ -6,4 +6,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   testConnection: () => ipcRenderer.invoke('test-connection'),
   getTodayReport: () => ipcRenderer.invoke('get-today-report'),
   submitReport: (content: string) => ipcRenderer.invoke('submit-report', content),
+  getCommitStatus: () => ipcRenderer.invoke('get-commit-status'),
+  manualPush: () => ipcRenderer.invoke('manual-push'),
 });

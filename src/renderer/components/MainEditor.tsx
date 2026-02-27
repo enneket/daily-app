@@ -4,14 +4,31 @@ interface MainEditorProps {
   onOpenSettings: () => void;
 }
 
+interface CommitStatus {
+  pendingCommits: number;
+  lastPushTime: number;
+  nextPushTime: number;
+}
+
 function MainEditor({ onOpenSettings }: MainEditorProps) {
   const [content, setContent] = useState('');
   const [todayReport, setTodayReport] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [pushing, setPushing] = useState(false);
+  const [commitStatus, setCommitStatus] = useState<CommitStatus>({ 
+    pendingCommits: 0, 
+    lastPushTime: Date.now(), 
+    nextPushTime: Date.now() 
+  });
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     loadTodayReport();
+    loadCommitStatus();
+    
+    // 每分钟更新一次状态
+    const interval = setInterval(loadCommitStatus, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadTodayReport = async () => {
@@ -25,6 +42,15 @@ function MainEditor({ onOpenSettings }: MainEditorProps) {
     }
   };
 
+  const loadCommitStatus = async () => {
+    try {
+      const status = await window.electronAPI.getCommitStatus();
+      setCommitStatus(status);
+    } catch (error) {
+      console.error('Failed to load commit status:', error);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!content.trim()) {
       showMessage('error', '请输入日报内容');
@@ -35,9 +61,10 @@ function MainEditor({ onOpenSettings }: MainEditorProps) {
     try {
       const result = await window.electronAPI.submitReport(content);
       if (result.success) {
-        showMessage('success', '提交成功！');
+        showMessage('success', '已保存到本地');
         setContent('');
         await loadTodayReport();
+        await loadCommitStatus();
       } else {
         showMessage('error', result.error || '提交失败');
       }
@@ -45,6 +72,28 @@ function MainEditor({ onOpenSettings }: MainEditorProps) {
       showMessage('error', error.message || '提交失败');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleManualPush = async () => {
+    if (commitStatus.pendingCommits === 0) {
+      showMessage('error', '没有待提交的内容');
+      return;
+    }
+
+    setPushing(true);
+    try {
+      const result = await window.electronAPI.manualPush();
+      if (result.success) {
+        showMessage('success', `已提交 ${result.pushed} 个更新到 GitHub`);
+        await loadCommitStatus();
+      } else {
+        showMessage('error', result.message || '提交失败');
+      }
+    } catch (error: any) {
+      showMessage('error', error.message || '提交失败');
+    } finally {
+      setPushing(false);
     }
   };
 
@@ -59,6 +108,23 @@ function MainEditor({ onOpenSettings }: MainEditorProps) {
     }
   };
 
+  const formatTimeRemaining = () => {
+    if (commitStatus.pendingCommits === 0) return '';
+    
+    const now = Date.now();
+    const remaining = commitStatus.nextPushTime - now;
+    
+    if (remaining <= 0) return '即将自动提交';
+    
+    const hours = Math.floor(remaining / (60 * 60 * 1000));
+    const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+    
+    if (hours > 0) {
+      return `${hours} 小时 ${minutes} 分钟后自动提交`;
+    }
+    return `${minutes} 分钟后自动提交`;
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -71,6 +137,29 @@ function MainEditor({ onOpenSettings }: MainEditorProps) {
           ⚙️ 设置
         </button>
       </div>
+
+      {/* Commit Status */}
+      {commitStatus.pendingCommits > 0 && (
+        <div className="mx-6 mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-yellow-800 font-medium">
+                📦 待提交：{commitStatus.pendingCommits} 个更新
+              </div>
+              <div className="text-xs text-yellow-700 mt-1">
+                {formatTimeRemaining()}
+              </div>
+            </div>
+            <button
+              onClick={handleManualPush}
+              disabled={pushing}
+              className="px-4 py-2 text-sm bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            >
+              {pushing ? '提交中...' : '立即提交'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Today's Report Preview */}
       {todayReport && (

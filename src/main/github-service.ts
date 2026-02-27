@@ -20,6 +20,11 @@ class GitHubService {
   private octokit: any;
   private config: LocalConfig;
   private repoConfig?: RepoConfig;
+  private store: any;
+  
+  // 提交策略配置
+  private readonly BATCH_SIZE = 10;  // 累积 10 个 commit 后提交
+  private readonly AUTO_PUSH_INTERVAL = 4 * 60 * 60 * 1000;  // 4 小时（毫秒）
   
   // 版本管理
   private readonly CURRENT_VERSION = '1.0.3';
@@ -42,11 +47,20 @@ class GitHubService {
     'README.md': '1.0.0'
   };
 
-  constructor(config: LocalConfig) {
+  constructor(config: LocalConfig, store: any) {
     this.config = config;
+    this.store = store;
     this.octokit = new Octokit({
       auth: config.githubToken,
     });
+    
+    // 初始化提交计数
+    if (!this.store.get('pendingCommits')) {
+      this.store.set('pendingCommits', 0);
+    }
+    if (!this.store.get('lastPushTime')) {
+      this.store.set('lastPushTime', Date.now());
+    }
   }
 
   async testConnection(): Promise<void> {
@@ -575,6 +589,98 @@ jobs:
     }
   }
 
+  /**
+   * 获取提交状态信息
+   */
+  getCommitStatus(): { pendingCommits: number; lastPushTime: number; nextPushTime: number } {
+    const pendingCommits = this.store.get('pendingCommits') || 0;
+    const lastPushTime = this.store.get('lastPushTime') || Date.now();
+    const nextPushTime = lastPushTime + this.AUTO_PUSH_INTERVAL;
+    
+    return {
+      pendingCommits,
+      lastPushTime,
+      nextPushTime
+    };
+  }
+
+  /**
+   * 检查是否需要自动提交到 GitHub
+   */
+  private shouldAutoPush(): boolean {
+    const pendingCommits = this.store.get('pendingCommits') || 0;
+    const lastPushTime = this.store.get('lastPushTime') || Date.now();
+    const now = Date.now();
+    
+    // 策略 1: 累积满 10 个 commit
+    if (pendingCommits >= this.BATCH_SIZE) {
+      console.log(`累积 ${pendingCommits} 个提交，触发自动推送到 GitHub`);
+      return true;
+    }
+    
+    // 策略 2: 有未提交的内容且距离上次提交超过 4 小时
+    if (pendingCommits > 0 && (now - lastPushTime) >= this.AUTO_PUSH_INTERVAL) {
+      console.log(`距离上次推送已超过 4 小时，触发自动推送到 GitHub`);
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * 将本地缓存的日报提交到 GitHub
+   */
+  private async pushToGitHub(filePath: string, content: string, sha?: string): Promise<void> {
+    await this.octokit.repos.createOrUpdateFileContents({
+      owner: this.config.repoOwner,
+      repo: this.config.repoName,
+      path: filePath,
+      message: `Update daily report: ${new Date().toLocaleDateString('zh-CN')}`,
+      content: Buffer.from(content).toString('base64'),
+      branch: this.config.branch,
+      sha: sha,
+    });
+  }
+
+  /**
+   * 手动触发提交到 GitHub
+   */
+  async manualPush(): Promise<{ success: boolean; message: string; pushed: number }> {
+    const pendingCommits = this.store.get('pendingCommits') || 0;
+    
+    if (pendingCommits === 0) {
+      return { success: false, message: '没有待提交的内容', pushed: 0 };
+    }
+    
+    try {
+      // 获取本地缓存的日报内容
+      const cachedReport = this.store.get('cachedReport');
+      if (!cachedReport) {
+        return { success: false, message: '没有缓存的日报内容', pushed: 0 };
+      }
+      
+      // 提交到 GitHub
+      await this.pushToGitHub(cachedReport.filePath, cachedReport.content, cachedReport.sha);
+      
+      // 清除缓存和计数
+      this.store.delete('cachedReport');
+      this.store.set('pendingCommits', 0);
+      this.store.set('lastPushTime', Date.now());
+      
+      return { 
+        success: true, 
+        message: `已提交 ${pendingCommits} 个更新到 GitHub`,
+        pushed: pendingCommits
+      };
+    } catch (error: any) {
+      return { 
+        success: false, 
+        message: `提交失败: ${error.message}`,
+        pushed: 0
+      };
+    }
+  }
+
   async submitReport(content: string): Promise<void> {
     const filePath = this.generateFilePath(new Date());
     const timestamp = new Date().toLocaleTimeString('zh-CN', { 
@@ -585,33 +691,55 @@ jobs:
     let existingContent = '';
     let sha: string | undefined;
     
-    try {
-      const { data } = await this.octokit.repos.getContent({
-        owner: this.config.repoOwner,
-        repo: this.config.repoName,
-        path: filePath,
-        ref: this.config.branch,
-      });
-      
-      if ('content' in data) {
-        existingContent = Buffer.from(data.content, 'base64').toString();
-        sha = data.sha;
+    // 先尝试从缓存获取
+    const cachedReport = this.store.get('cachedReport');
+    if (cachedReport && cachedReport.filePath === filePath) {
+      existingContent = cachedReport.content;
+      sha = cachedReport.sha;
+    } else {
+      // 从 GitHub 获取现有内容
+      try {
+        const { data } = await this.octokit.repos.getContent({
+          owner: this.config.repoOwner,
+          repo: this.config.repoName,
+          path: filePath,
+          ref: this.config.branch,
+        });
+        
+        if ('content' in data) {
+          existingContent = Buffer.from(data.content, 'base64').toString();
+          sha = data.sha;
+        }
+      } catch (error) {
+        existingContent = `# ${new Date().toLocaleDateString('zh-CN')} 日报\n\n`;
       }
-    } catch (error) {
-      existingContent = `# ${new Date().toLocaleDateString('zh-CN')} 日报\n\n`;
     }
     
+    // 追加新内容
     const newContent = `${existingContent}\n## ${timestamp}\n${content}\n`;
     
-    await this.octokit.repos.createOrUpdateFileContents({
-      owner: this.config.repoOwner,
-      repo: this.config.repoName,
-      path: filePath,
-      message: `Update daily report: ${new Date().toLocaleDateString('zh-CN')}`,
-      content: Buffer.from(newContent).toString('base64'),
-      branch: this.config.branch,
-      sha: sha,
+    // 保存到本地缓存
+    this.store.set('cachedReport', {
+      filePath,
+      content: newContent,
+      sha
     });
+    
+    // 增加待提交计数
+    const pendingCommits = (this.store.get('pendingCommits') || 0) + 1;
+    this.store.set('pendingCommits', pendingCommits);
+    console.log(`日报已保存到本地，当前待提交数量: ${pendingCommits}`);
+    
+    // 检查是否需要自动提交到 GitHub
+    if (this.shouldAutoPush()) {
+      await this.pushToGitHub(filePath, newContent, sha);
+      
+      // 清除缓存和计数
+      this.store.delete('cachedReport');
+      this.store.set('pendingCommits', 0);
+      this.store.set('lastPushTime', Date.now());
+      console.log('已自动提交到 GitHub');
+    }
   }
 }
 

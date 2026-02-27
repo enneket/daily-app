@@ -170,7 +170,7 @@ ipcMain.handle('get-config', async () => {
 
 ipcMain.handle('save-config', async (_: any, config: any) => {
   store.set('github-config', config);
-  githubService = new GitHubServiceClass(config);
+  githubService = new GitHubServiceClass(config, store);
   
   // 保存配置后自动初始化/更新仓库
   try {
@@ -198,7 +198,7 @@ ipcMain.handle('test-connection', async () => {
     if (!config) {
       return { success: false, error: '请先配置 GitHub 信息' };
     }
-    githubService = new GitHubServiceClass(config);
+    githubService = new GitHubServiceClass(config, store);
   }
   
   try {
@@ -209,13 +209,43 @@ ipcMain.handle('test-connection', async () => {
   }
 });
 
+// 获取提交状态
+ipcMain.handle('get-commit-status', async () => {
+  if (!githubService) {
+    return { pendingCommits: 0, lastPushTime: Date.now(), nextPushTime: Date.now() };
+  }
+  return githubService.getCommitStatus();
+});
+
+// 手动提交到 GitHub
+ipcMain.handle('manual-push', async () => {
+  if (!githubService) {
+    return { success: false, message: '请先配置 GitHub 信息', pushed: 0 };
+  }
+  return await githubService.manualPush();
+});
+
+// 定时检查是否需要自动提交
+setInterval(async () => {
+  if (githubService) {
+    const status = githubService.getCommitStatus();
+    const now = Date.now();
+    
+    // 检查是否需要自动提交（有未提交内容且超过 4 小时）
+    if (status.pendingCommits > 0 && (now - status.lastPushTime) >= 4 * 60 * 60 * 1000) {
+      console.log('定时检查：触发自动提交');
+      await githubService.manualPush();
+    }
+  }
+}, 60 * 60 * 1000); // 每小时检查一次
+
 ipcMain.handle('get-today-report', async () => {
   if (!githubService) {
     const config = store.get('github-config') as any;
     if (!config) {
       return { success: false, error: '请先配置 GitHub 信息' };
     }
-    githubService = new GitHubServiceClass(config);
+    githubService = new GitHubServiceClass(config, store);
   }
   
   try {
@@ -232,7 +262,7 @@ ipcMain.handle('submit-report', async (_: any, content: string) => {
     if (!config) {
       return { success: false, error: '请先配置 GitHub 信息' };
     }
-    githubService = new GitHubServiceClass(config);
+    githubService = new GitHubServiceClass(config, store);
   }
   
   try {
