@@ -58,9 +58,7 @@ class GitHubService {
     if (!this.store.get('pendingCommits')) {
       this.store.set('pendingCommits', 0);
     }
-    if (!this.store.get('lastPushTime')) {
-      this.store.set('lastPushTime', Date.now());
-    }
+    // 不初始化 lastPushTime，让 shouldAutoPush() 使用默认值 0
   }
 
   async testConnection(): Promise<void> {
@@ -609,7 +607,7 @@ jobs:
    */
   private shouldAutoPush(): boolean {
     const pendingCommits = this.store.get('pendingCommits') || 0;
-    const lastPushTime = this.store.get('lastPushTime') || Date.now();
+    const lastPushTime = this.store.get('lastPushTime');
     const now = Date.now();
     
     // 策略 1: 累积满 10 个 commit
@@ -619,7 +617,8 @@ jobs:
     }
     
     // 策略 2: 有未提交的内容且距离上次提交超过 4 小时
-    if (pendingCommits > 0 && (now - lastPushTime) >= this.AUTO_PUSH_INTERVAL) {
+    // 注意：如果从未推送过（lastPushTime 为 undefined），则不触发定时推送
+    if (pendingCommits > 0 && lastPushTime && (now - lastPushTime) >= this.AUTO_PUSH_INTERVAL) {
       console.log(`距离上次推送已超过 4 小时，触发自动推送到 GitHub`);
       return true;
     }
