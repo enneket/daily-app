@@ -24,6 +24,8 @@ class GitHubService {
   
   // 提交策略配置
   private readonly BATCH_SIZE = 10;  // 累积 10 个 commit 后提交
+  // 提交锁，防止并发提交
+  private isSubmitting = false;
   private readonly AUTO_PUSH_INTERVAL = 4 * 60 * 60 * 1000;  // 4 小时（毫秒）
   
   // 版本管理
@@ -635,6 +637,18 @@ jobs:
 
     return todayLines.join('\n').trim();
   }
+  /**
+   * 检查是否为重复内容
+   */
+  private isDuplicateContent(existingContent: string, newContent: string, timestamp: string): boolean {
+    if (!existingContent) return false;
+
+    const lines = existingContent.split('\n');
+    const timestampPattern = `## ${timestamp}`;
+
+    // 检查是否已经存在相同时间戳的记录
+    return lines.some(line => line.trim() === timestampPattern);
+  }
 
   /**
    * 获取提交状态信息
@@ -730,65 +744,83 @@ jobs:
   }
 
   async submitReport(content: string): Promise<void> {
-    const filePath = this.generateFilePath(new Date());
-    const timestamp = new Date().toLocaleTimeString('zh-CN', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-    
-    let existingContent = '';
-    let sha: string | undefined;
-    
-    // 先尝试从缓存获取
-    const cachedReport = this.store.get('cachedReport');
-    if (cachedReport && cachedReport.filePath === filePath) {
-      existingContent = cachedReport.content;
-      sha = cachedReport.sha;
-    } else {
-      // 从 GitHub 获取现有内容
+      // 防止并发提交
+      if (this.isSubmitting) {
+        console.log('正在提交中，跳过重复请求');
+        throw new Error('正在提交中，请稍后再试');
+      }
+
+      this.isSubmitting = true;
+
       try {
-        const { data } = await this.octokit.repos.getContent({
-          owner: this.config.repoOwner,
-          repo: this.config.repoName,
-          path: filePath,
-          ref: this.config.branch,
+        const filePath = this.generateFilePath(new Date());
+        // 提高时间戳精度，精确到秒
+        const timestamp = new Date().toLocaleTimeString('zh-CN', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          second: '2-digit'
         });
-        
-        if ('content' in data) {
-          existingContent = Buffer.from(data.content, 'base64').toString();
-          sha = data.sha;
+
+        let existingContent = '';
+        let sha: string | undefined;
+
+        // 先尝试从缓存获取
+        const cachedReport = this.store.get('cachedReport');
+        if (cachedReport && cachedReport.filePath === filePath) {
+          existingContent = cachedReport.content;
+          sha = cachedReport.sha;
+        } else {
+          // 从 GitHub 获取现有内容
+          try {
+            const { data } = await this.octokit.repos.getContent({
+              owner: this.config.repoOwner,
+              repo: this.config.repoName,
+              path: filePath,
+              ref: this.config.branch,
+            });
+
+            if ('content' in data) {
+              existingContent = Buffer.from(data.content, 'base64').toString();
+              sha = data.sha;
+            }
+          } catch (error) {
+            existingContent = `# ${new Date().toLocaleDateString('zh-CN')} 日报\n\n`;
+          }
         }
-      } catch (error) {
-        existingContent = `# ${new Date().toLocaleDateString('zh-CN')} 日报\n\n`;
+
+        // 检查是否为重复内容
+        if (this.isDuplicateContent(existingContent, content, timestamp)) {
+          console.log('检测到重复内容，跳过提交');
+          return;
+        }
+
+        // 追加新内容
+        const newContent = `${existingContent}\n## ${timestamp}\n${content}\n`;
+
+        // 原子性更新缓存和计数
+        const pendingCommits = (this.store.get('pendingCommits') || 0) + 1;
+        this.store.set('cachedReport', {
+          filePath,
+          content: newContent,
+          sha
+        });
+        this.store.set('pendingCommits', pendingCommits);
+        console.log(`日报已保存到本地，当前待提交数量: ${pendingCommits}`);
+
+        // 检查是否需要自动提交到 GitHub
+        if (this.shouldAutoPush()) {
+          await this.pushToGitHub(filePath, newContent, sha);
+
+          // 清除缓存和计数
+          this.store.delete('cachedReport');
+          this.store.set('pendingCommits', 0);
+          this.store.set('lastPushTime', Date.now());
+          console.log('已自动提交到 GitHub');
+        }
+      } finally {
+        this.isSubmitting = false;
       }
     }
-    
-    // 追加新内容
-    const newContent = `${existingContent}\n## ${timestamp}\n${content}\n`;
-    
-    // 保存到本地缓存
-    this.store.set('cachedReport', {
-      filePath,
-      content: newContent,
-      sha
-    });
-    
-    // 增加待提交计数
-    const pendingCommits = (this.store.get('pendingCommits') || 0) + 1;
-    this.store.set('pendingCommits', pendingCommits);
-    console.log(`日报已保存到本地，当前待提交数量: ${pendingCommits}`);
-    
-    // 检查是否需要自动提交到 GitHub
-    if (this.shouldAutoPush()) {
-      await this.pushToGitHub(filePath, newContent, sha);
-      
-      // 清除缓存和计数
-      this.store.delete('cachedReport');
-      this.store.set('pendingCommits', 0);
-      this.store.set('lastPushTime', Date.now());
-      console.log('已自动提交到 GitHub');
-    }
-  }
 }
 
 module.exports = { GitHubService };

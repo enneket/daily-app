@@ -100,6 +100,12 @@ function MainEditor({ onOpenSettings }: MainEditorProps) {
       return;
     }
 
+    // 防止重复提交
+    if (submitting) {
+      console.log('正在提交中，忽略重复请求');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const result = await window.electronAPI.submitReport(content);
