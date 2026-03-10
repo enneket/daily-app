@@ -56,6 +56,15 @@ class GitHubService {
       auth: config.githubToken,
     });
     
+    // 调试：打印初始化状态
+    console.log('=== GitHubService 初始化 ===');
+    console.log('pendingCommits:', this.store.get('pendingCommits'));
+    console.log('lastPushTime:', this.store.get('lastPushTime'));
+    console.log('cachedReport 存在:', !!this.store.get('cachedReport'));
+    console.log('BATCH_SIZE:', this.BATCH_SIZE);
+    console.log('AUTO_PUSH_INTERVAL:', this.AUTO_PUSH_INTERVAL);
+    console.log('==============================');
+    
     // 初始化提交计数
     if (!this.store.get('pendingCommits')) {
       this.store.set('pendingCommits', 0);
@@ -654,40 +663,56 @@ jobs:
    * 获取提交状态信息
    */
   getCommitStatus(): { pendingCommits: number; lastPushTime: number; nextPushTime: number } {
-    const pendingCommits = this.store.get('pendingCommits') || 0;
-    const lastPushTime = this.store.get('lastPushTime') || Date.now();
-    const nextPushTime = lastPushTime + this.AUTO_PUSH_INTERVAL;
-    
-    return {
-      pendingCommits,
-      lastPushTime,
-      nextPushTime
-    };
-  }
+      const pendingCommits = this.store.get('pendingCommits') || 0;
+      const lastPushTime = this.store.get('lastPushTime') || 0; // 修复：使用 0 而不是 Date.now()
+      const nextPushTime = lastPushTime + this.AUTO_PUSH_INTERVAL;
+
+      return {
+        pendingCommits,
+        lastPushTime,
+        nextPushTime
+      };
+    }
 
   /**
    * 检查是否需要自动提交到 GitHub
    */
   private shouldAutoPush(): boolean {
-    const pendingCommits = this.store.get('pendingCommits') || 0;
-    const lastPushTime = this.store.get('lastPushTime');
-    const now = Date.now();
-    
-    // 策略 1: 累积满 10 个 commit
-    if (pendingCommits >= this.BATCH_SIZE) {
-      console.log(`累积 ${pendingCommits} 个提交，触发自动推送到 GitHub`);
-      return true;
+      const pendingCommits = this.store.get('pendingCommits') || 0;
+      const lastPushTime = this.store.get('lastPushTime');
+      const now = Date.now();
+
+      console.log('=== shouldAutoPush 检查 ===');
+      console.log('pendingCommits:', pendingCommits);
+      console.log('BATCH_SIZE:', this.BATCH_SIZE);
+      console.log('lastPushTime:', lastPushTime);
+      console.log('lastPushTime 类型:', typeof lastPushTime);
+      console.log('now:', now);
+      console.log('AUTO_PUSH_INTERVAL:', this.AUTO_PUSH_INTERVAL);
+
+      if (lastPushTime) {
+        const timeDiff = now - lastPushTime;
+        console.log('时间差:', timeDiff, '毫秒');
+        console.log('是否超过4小时:', timeDiff >= this.AUTO_PUSH_INTERVAL);
+      }
+
+      // 策略 1: 累积满 10 个 commit
+      if (pendingCommits >= this.BATCH_SIZE) {
+        console.log(`✅ 触发条件1: 累积 ${pendingCommits} 个提交 >= ${this.BATCH_SIZE}`);
+        return true;
+      }
+
+      // 策略 2: 有未提交的内容且距离上次提交超过 4 小时
+      // 注意：如果从未推送过（lastPushTime 为 undefined），则不触发定时推送
+      if (pendingCommits > 0 && lastPushTime && (now - lastPushTime) >= this.AUTO_PUSH_INTERVAL) {
+        console.log(`✅ 触发条件2: 有 ${pendingCommits} 个未提交 && 距离上次推送超过4小时`);
+        return true;
+      }
+
+      console.log('❌ 不满足推送条件，保持本地暂存');
+      console.log('========================');
+      return false;
     }
-    
-    // 策略 2: 有未提交的内容且距离上次提交超过 4 小时
-    // 注意：如果从未推送过（lastPushTime 为 undefined），则不触发定时推送
-    if (pendingCommits > 0 && lastPushTime && (now - lastPushTime) >= this.AUTO_PUSH_INTERVAL) {
-      console.log(`距离上次推送已超过 4 小时，触发自动推送到 GitHub`);
-      return true;
-    }
-    
-    return false;
-  }
 
   /**
    * 将本地缓存的日报提交到 GitHub
@@ -744,11 +769,17 @@ jobs:
   }
 
   async submitReport(content: string): Promise<void> {
-      // 防止并发提交
-      if (this.isSubmitting) {
-        console.log('正在提交中，跳过重复请求');
-        throw new Error('正在提交中，请稍后再试');
-      }
+    console.log('=== 提交前状态检查 ===');
+    console.log('当前 pendingCommits:', this.store.get('pendingCommits'));
+    console.log('当前 lastPushTime:', this.store.get('lastPushTime'));
+    console.log('当前 cachedReport 存在:', !!this.store.get('cachedReport'));
+    console.log('========================');
+    
+    // 防止并发提交
+    if (this.isSubmitting) {
+      console.log('正在提交中，跳过重复请求');
+      throw new Error('正在提交中，请稍后再试');
+    }
 
       this.isSubmitting = true;
 
