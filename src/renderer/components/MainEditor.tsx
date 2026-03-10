@@ -23,22 +23,65 @@ function MainEditor({ onOpenSettings }: MainEditorProps) {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    loadTodayReport();
+    // 启动时检查是否需要跨日刷新
+    const initializeToday = () => {
+      const now = new Date();
+      const lastRefresh = localStorage.getItem('lastTodayReportRefresh');
+      const lastRefreshDate = lastRefresh ? new Date(lastRefresh) : null;
+      
+      // 如果是新的一天，清空显示并重新加载
+      if (!lastRefreshDate || 
+          now.toDateString() !== lastRefreshDate.toDateString()) {
+        console.log('检测到新的一天，刷新今日内容');
+        setTodayReport(''); // 先清空显示
+        loadTodayReport();
+        localStorage.setItem('lastTodayReportRefresh', now.toISOString());
+      } else {
+        // 同一天，正常加载
+        loadTodayReport();
+      }
+    };
+    
+    initializeToday();
     loadCommitStatus();
     
-    // 每分钟更新一次状态
-    const interval = setInterval(loadCommitStatus, 60000);
-    return () => clearInterval(interval);
+    // 每分钟更新一次提交状态
+    const statusInterval = setInterval(loadCommitStatus, 60000);
+    
+    // 每小时检查一次是否需要跨日刷新
+    const refreshInterval = setInterval(() => {
+      const now = new Date();
+      const lastRefresh = localStorage.getItem('lastTodayReportRefresh');
+      const lastRefreshDate = lastRefresh ? new Date(lastRefresh) : null;
+      
+      // 如果是新的一天，刷新今日内容
+      if (!lastRefreshDate || 
+          now.toDateString() !== lastRefreshDate.toDateString()) {
+        console.log('定时检测到新的一天，刷新今日内容');
+        setTodayReport(''); // 先清空显示
+        loadTodayReport();
+        localStorage.setItem('lastTodayReportRefresh', now.toISOString());
+      }
+    }, 60 * 60 * 1000); // 每小时检查一次
+    
+    return () => {
+      clearInterval(statusInterval);
+      clearInterval(refreshInterval);
+    };
   }, []);
 
   const loadTodayReport = async () => {
     try {
       const result = await window.electronAPI.getTodayReport();
-      if (result.success && result.content) {
-        setTodayReport(result.content);
+      if (result.success) {
+        // 即使内容为空也要设置，这样可以清空之前的显示
+        setTodayReport(result.content || '');
+      } else {
+        setTodayReport('');
       }
     } catch (error) {
       console.error('Failed to load today report:', error);
+      setTodayReport('');
     }
   };
 
@@ -162,14 +205,18 @@ function MainEditor({ onOpenSettings }: MainEditorProps) {
       )}
 
       {/* Today's Report Preview */}
-      {todayReport && (
-        <div className="mx-6 mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="text-sm text-blue-800 font-medium mb-2">今日已提交内容：</div>
+      <div className="mx-6 mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="text-sm text-blue-800 font-medium mb-2">今日已提交内容：</div>
+        {todayReport ? (
           <div className="text-sm text-blue-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
             {todayReport}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="text-sm text-gray-500 italic">
+            今天还没有提交内容
+          </div>
+        )}
+      </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col p-6">

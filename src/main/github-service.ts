@@ -568,23 +568,72 @@ jobs:
   }
 
   async getTodayReport(): Promise<string> {
-    const filePath = this.generateFilePath(new Date());
-    
-    try {
-      const { data } = await this.octokit.repos.getContent({
-        owner: this.config.repoOwner,
-        repo: this.config.repoName,
-        path: filePath,
-        ref: this.config.branch,
-      });
-      
-      if ('content' in data) {
-        return Buffer.from(data.content, 'base64').toString();
+      const today = new Date();
+      const todayDateString = today.toLocaleDateString('zh-CN');
+      const filePath = this.generateFilePath(today);
+
+      // 1. 先检查本地缓存
+      const cachedReport = this.store.get('cachedReport');
+      if (cachedReport && cachedReport.filePath === filePath) {
+        return this.filterTodayContent(cachedReport.content, todayDateString);
       }
-      return '';
-    } catch (error) {
+
+      // 2. 从 GitHub 获取
+      try {
+        const { data } = await this.octokit.repos.getContent({
+          owner: this.config.repoOwner,
+          repo: this.config.repoName,
+          path: filePath,
+          ref: this.config.branch,
+        });
+
+        if ('content' in data) {
+          const content = Buffer.from(data.content, 'base64').toString();
+          return this.filterTodayContent(content, todayDateString);
+        }
+        return '';
+      } catch (error) {
+        return '';
+      }
+    }
+  /**
+   * 过滤今天的内容
+   */
+  private filterTodayContent(content: string, todayDateString: string): string {
+    if (!content) return '';
+
+    const lines = content.split('\n');
+    const todayLines: string[] = [];
+    let isInTodaySection = false;
+    let foundTodayHeader = false;
+
+    for (const line of lines) {
+      // 检查是否是今天的日期标题 (格式: # 2026/3/10 日报)
+      if (line.match(/^# \d{4}\/\d{1,2}\/\d{1,2}/) && line.includes(todayDateString)) {
+        isInTodaySection = true;
+        foundTodayHeader = true;
+        todayLines.push(line);
+        continue;
+      }
+
+      // 检查是否遇到其他日期标题（结束今天的内容）
+      if (line.match(/^# \d{4}\/\d{1,2}\/\d{1,2}/) && !line.includes(todayDateString)) {
+        isInTodaySection = false;
+        continue;
+      }
+
+      // 如果在今天的内容区域，添加到结果
+      if (isInTodaySection) {
+        todayLines.push(line);
+      }
+    }
+
+    // 如果没有找到今天的标题，返回空字符串
+    if (!foundTodayHeader) {
       return '';
     }
+
+    return todayLines.join('\n').trim();
   }
 
   /**
