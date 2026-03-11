@@ -682,35 +682,48 @@ jobs:
       const lastPushTime = this.store.get('lastPushTime');
       const now = Date.now();
 
-      console.log('=== shouldAutoPush 检查 ===');
-      console.log('pendingCommits:', pendingCommits);
-      console.log('BATCH_SIZE:', this.BATCH_SIZE);
-      console.log('lastPushTime:', lastPushTime);
-      console.log('lastPushTime 类型:', typeof lastPushTime);
-      console.log('now:', now);
-      console.log('AUTO_PUSH_INTERVAL:', this.AUTO_PUSH_INTERVAL);
-
-      if (lastPushTime) {
-        const timeDiff = now - lastPushTime;
-        console.log('时间差:', timeDiff, '毫秒');
-        console.log('是否超过4小时:', timeDiff >= this.AUTO_PUSH_INTERVAL);
-      }
+      console.log('=== shouldAutoPush 详细检查 ===');
+      console.log('当前状态:');
+      console.log('  - pendingCommits:', pendingCommits, '(类型:', typeof pendingCommits, ')');
+      console.log('  - BATCH_SIZE:', this.BATCH_SIZE);
+      console.log('  - lastPushTime:', lastPushTime, '(类型:', typeof lastPushTime, ')');
+      console.log('  - now:', now);
+      console.log('  - AUTO_PUSH_INTERVAL:', this.AUTO_PUSH_INTERVAL, '毫秒');
 
       // 策略 1: 累积满 10 个 commit
-      if (pendingCommits >= this.BATCH_SIZE) {
+      const condition1 = pendingCommits >= this.BATCH_SIZE;
+      console.log('条件1检查 (累积提交数):');
+      console.log(`  - ${pendingCommits} >= ${this.BATCH_SIZE} = ${condition1}`);
+      
+      if (condition1) {
         console.log(`✅ 触发条件1: 累积 ${pendingCommits} 个提交 >= ${this.BATCH_SIZE}`);
+        console.log('==============================');
         return true;
       }
 
       // 策略 2: 有未提交的内容且距离上次提交超过 4 小时
-      // 注意：如果从未推送过（lastPushTime 为 undefined），则不触发定时推送
-      if (pendingCommits > 0 && lastPushTime && (now - lastPushTime) >= this.AUTO_PUSH_INTERVAL) {
-        console.log(`✅ 触发条件2: 有 ${pendingCommits} 个未提交 && 距离上次推送超过4小时`);
-        return true;
+      console.log('条件2检查 (时间间隔):');
+      console.log(`  - pendingCommits > 0: ${pendingCommits} > 0 = ${pendingCommits > 0}`);
+      console.log(`  - lastPushTime 存在: ${!!lastPushTime}`);
+      
+      if (lastPushTime) {
+        const timeDiff = now - lastPushTime;
+        const timeExceeded = timeDiff >= this.AUTO_PUSH_INTERVAL;
+        console.log(`  - 时间差: ${timeDiff} 毫秒 (${Math.round(timeDiff / 1000 / 60)} 分钟)`);
+        console.log(`  - 是否超过4小时: ${timeDiff} >= ${this.AUTO_PUSH_INTERVAL} = ${timeExceeded}`);
+        
+        const condition2 = pendingCommits > 0 && timeExceeded;
+        if (condition2) {
+          console.log(`✅ 触发条件2: 有 ${pendingCommits} 个未提交 && 距离上次推送超过4小时`);
+          console.log('==============================');
+          return true;
+        }
+      } else {
+        console.log('  - lastPushTime 为空，跳过时间检查（首次使用）');
       }
 
-      console.log('❌ 不满足推送条件，保持本地暂存');
-      console.log('========================');
+      console.log('❌ 不满足任何推送条件，保持本地暂存');
+      console.log('==============================');
       return false;
     }
 
@@ -773,6 +786,8 @@ jobs:
     console.log('当前 pendingCommits:', this.store.get('pendingCommits'));
     console.log('当前 lastPushTime:', this.store.get('lastPushTime'));
     console.log('当前 cachedReport 存在:', !!this.store.get('cachedReport'));
+    console.log('BATCH_SIZE:', this.BATCH_SIZE);
+    console.log('AUTO_PUSH_INTERVAL:', this.AUTO_PUSH_INTERVAL);
     console.log('========================');
     
     // 防止并发提交
@@ -829,25 +844,40 @@ jobs:
         const newContent = `${existingContent}\n## ${timestamp}\n${content}\n`;
 
         // 原子性更新缓存和计数
-        const pendingCommits = (this.store.get('pendingCommits') || 0) + 1;
+        const currentPending = this.store.get('pendingCommits') || 0;
+        const newPendingCommits = currentPending + 1;
+        
+        console.log(`=== 更新本地缓存 ===`);
+        console.log(`更新前 pendingCommits: ${currentPending}`);
+        console.log(`更新后 pendingCommits: ${newPendingCommits}`);
+        
         this.store.set('cachedReport', {
           filePath,
           content: newContent,
           sha
         });
-        this.store.set('pendingCommits', pendingCommits);
-        console.log(`日报已保存到本地，当前待提交数量: ${pendingCommits}`);
+        this.store.set('pendingCommits', newPendingCommits);
+        console.log(`日报已保存到本地，当前待提交数量: ${newPendingCommits}`);
+        console.log('===================');
 
         // 检查是否需要自动提交到 GitHub
-        if (this.shouldAutoPush()) {
+        console.log('=== 开始检查是否需要推送 ===');
+        const shouldPush = this.shouldAutoPush();
+        console.log(`shouldAutoPush() 返回: ${shouldPush}`);
+        
+        if (shouldPush) {
+          console.log('✅ 满足推送条件，开始推送到 GitHub...');
           await this.pushToGitHub(filePath, newContent, sha);
 
           // 清除缓存和计数
           this.store.delete('cachedReport');
           this.store.set('pendingCommits', 0);
           this.store.set('lastPushTime', Date.now());
-          console.log('已自动提交到 GitHub');
+          console.log('✅ 已自动提交到 GitHub');
+        } else {
+          console.log('❌ 不满足推送条件，保持本地暂存');
         }
+        console.log('==============================');
       } finally {
         this.isSubmitting = false;
       }
