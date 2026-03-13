@@ -25,26 +25,34 @@ function MainEditor({
   onTodayReportUpdate,
   onCommitStatusUpdate 
 }: MainEditorProps) {
-  // 立即执行的测试日志
-  console.log('🎯 [TEST] MainEditor 组件已加载 - 时间:', new Date().toISOString());
-  console.log('🎯 [TEST] 这是一个测试日志，如果你看到这个，说明前端代码正常');
-  
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const [initialized, setInitialized] = useState(false);
 
   const addDebugInfo = (info: string) => {
     const timestamp = new Date().toLocaleTimeString();
     const debugLine = `[${timestamp}] ${info}`;
     console.log(debugLine);
-    setDebugInfo(prev => [...prev.slice(-9), debugLine]); // 保留最近10条
+    setDebugInfo(prev => {
+      const newInfo = [...prev.slice(-9), debugLine]; // 保留最近10条
+      return newInfo;
+    });
   };
 
   useEffect(() => {
-    addDebugInfo('🎯 MainEditor 组件已挂载');
-    
+    if (!initialized) {
+      const timestamp = new Date().toLocaleTimeString();
+      const debugLine = `[${timestamp}] 🎯 MainEditor 组件已挂载`;
+      console.log(debugLine);
+      setDebugInfo([debugLine]);
+      setInitialized(true);
+    }
+  }, [initialized]);
+
+  useEffect(() => {
     // 只保留定时检查，不在组件挂载时加载数据
     
     // 每分钟更新一次提交状态
@@ -88,7 +96,7 @@ function MainEditor({
       clearInterval(statusInterval);
       clearInterval(refreshInterval);
     };
-  }, [onTodayReportUpdate, onCommitStatusUpdate]);
+  }, []); // 移除依赖项，避免重复执行
 
   const handleSubmit = async () => {
     addDebugInfo('🖱️ handleSubmit 被调用');
