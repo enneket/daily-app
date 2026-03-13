@@ -25,12 +25,26 @@ function MainEditor({
   onTodayReportUpdate,
   onCommitStatusUpdate 
 }: MainEditorProps) {
+  // 立即执行的测试日志
+  console.log('🎯 [TEST] MainEditor 组件已加载 - 时间:', new Date().toISOString());
+  console.log('🎯 [TEST] 这是一个测试日志，如果你看到这个，说明前端代码正常');
+  
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+
+  const addDebugInfo = (info: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const debugLine = `[${timestamp}] ${info}`;
+    console.log(debugLine);
+    setDebugInfo(prev => [...prev.slice(-9), debugLine]); // 保留最近10条
+  };
 
   useEffect(() => {
+    addDebugInfo('🎯 MainEditor 组件已挂载');
+    
     // 只保留定时检查，不在组件挂载时加载数据
     
     // 每分钟更新一次提交状态
@@ -77,44 +91,44 @@ function MainEditor({
   }, [onTodayReportUpdate, onCommitStatusUpdate]);
 
   const handleSubmit = async () => {
-    console.log('🖱️ [Frontend] handleSubmit 被调用');
-    console.log('📝 [Frontend] 内容长度:', content.trim().length);
+    addDebugInfo('🖱️ handleSubmit 被调用');
+    addDebugInfo(`📝 内容长度: ${content.trim().length}`);
     
     if (!content.trim()) {
-      console.log('⚠️ [Frontend] 内容为空，显示错误消息');
+      addDebugInfo('⚠️ 内容为空，显示错误消息');
       showMessage('error', '请输入日报内容');
       return;
     }
 
     // 防止重复提交
     if (submitting) {
-      console.log('⚠️ [Frontend] 正在提交中，忽略重复请求');
+      addDebugInfo('⚠️ 正在提交中，忽略重复请求');
       return;
     }
 
-    console.log('🚀 [Frontend] 开始提交流程');
+    addDebugInfo('🚀 开始提交流程');
     setSubmitting(true);
     try {
-      console.log('📤 [Frontend] 调用 window.electronAPI.submitReport');
+      addDebugInfo('📤 调用 window.electronAPI.submitReport');
       const result = await window.electronAPI.submitReport(content);
-      console.log('📥 [Frontend] 收到提交结果:', result);
+      addDebugInfo(`📥 收到提交结果: ${JSON.stringify(result)}`);
       
       if (result.success) {
-        console.log('✅ [Frontend] 提交成功');
+        addDebugInfo('✅ 提交成功');
         showMessage('success', '已保存到本地');
         setContent('');
-        console.log('🔄 [Frontend] 开始更新数据');
+        addDebugInfo('🔄 开始更新数据');
         await onDataUpdate(); // 使用父组件的更新方法
-        console.log('✅ [Frontend] 数据更新完成');
+        addDebugInfo('✅ 数据更新完成');
       } else {
-        console.log('❌ [Frontend] 提交失败:', result.error);
+        addDebugInfo(`❌ 提交失败: ${result.error}`);
         showMessage('error', result.error || '提交失败');
       }
     } catch (error: any) {
-      console.log('💥 [Frontend] 提交过程中发生异常:', error);
+      addDebugInfo(`💥 提交过程中发生异常: ${error.message}`);
       showMessage('error', error.message || '提交失败');
     } finally {
-      console.log('🏁 [Frontend] 提交流程结束');
+      addDebugInfo('🏁 提交流程结束');
       setSubmitting(false);
     }
   };
@@ -217,6 +231,18 @@ function MainEditor({
                 >
                   {pushing ? '提交中...' : '立即提交'}
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Debug Info */}
+          {debugInfo.length > 0 && (
+            <div className="mx-6 mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="text-sm text-gray-800 font-medium mb-2">调试信息：</div>
+              <div className="text-xs text-gray-600 font-mono max-h-32 overflow-y-auto">
+                {debugInfo.map((info, index) => (
+                  <div key={index}>{info}</div>
+                ))}
               </div>
             </div>
           )}

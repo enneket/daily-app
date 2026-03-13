@@ -94,6 +94,10 @@ function createWindow() {
     },
   });
 
+  // 立即测试日志
+  console.log('🎯 [TEST] 主进程窗口创建完成 - 时间:', new Date().toISOString());
+  console.log('🎯 [TEST] 这是主进程的测试日志');
+
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
@@ -124,6 +128,26 @@ function createWindow() {
   mainWindow.webContents.on('console-message', (_event: any, _level: any, message: any) => {
     console.log('Renderer console:', message);
   });
+  
+  // 重写 console.log 以转发到渲染进程
+  const originalConsoleLog = console.log;
+  console.log = (...args: any[]) => {
+    originalConsoleLog(...args);
+    // 转发到渲染进程
+    if (mainWindow && mainWindow.webContents) {
+      try {
+        mainWindow.webContents.executeJavaScript(`
+          console.log('[主进程]', ${JSON.stringify(args.map(arg => 
+            typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+          ))});
+        `);
+      } catch (e) {
+        // 忽略转发错误
+      }
+    }
+  };
+  
+  console.log('🎯 [TEST] 主进程日志转发已设置');
 }
 
 // 单实例锁定
