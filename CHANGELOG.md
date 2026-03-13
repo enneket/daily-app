@@ -24,6 +24,13 @@
 
 ### 改进
 
+- 更新 GitHub Actions 版本以支持 Node.js 24
+  - 更新所有 actions 到最新版本（v5）
+  - 消除 Node.js 20 弃用警告
+  - 确保 CI/CD 流程的未来兼容性
+
+### 改进
+
 - 更新 GitHub Actions 支持 Node.js 24
   - 解决 Node.js 20 弃用警告
   - 确保 2026 年 6 月后构建流程正常工作
