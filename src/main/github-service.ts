@@ -678,22 +678,35 @@ jobs:
    * 检查是否需要自动提交到 GitHub
    */
   private shouldAutoPush(): boolean {
+      // 立即获取所有相关数据
       const pendingCommits = this.store.get('pendingCommits') || 0;
       const lastPushTime = this.store.get('lastPushTime');
       const now = Date.now();
 
       console.log('=== shouldAutoPush 详细检查 ===');
-      console.log('当前状态:');
+      console.log('🔍 立即读取的原始数据:');
+      console.log('  - store.get("pendingCommits"):', this.store.get('pendingCommits'));
+      console.log('  - store.get("lastPushTime"):', this.store.get('lastPushTime'));
+      console.log('  - 完整 store 数据:', JSON.stringify({
+        pendingCommits: this.store.get('pendingCommits'),
+        lastPushTime: this.store.get('lastPushTime'),
+        cachedReport: !!this.store.get('cachedReport')
+      }, null, 2));
+      
+      console.log('📊 处理后的变量:');
       console.log('  - pendingCommits:', pendingCommits, '(类型:', typeof pendingCommits, ')');
-      console.log('  - BATCH_SIZE:', this.BATCH_SIZE);
       console.log('  - lastPushTime:', lastPushTime, '(类型:', typeof lastPushTime, ')');
       console.log('  - now:', now);
-      console.log('  - AUTO_PUSH_INTERVAL:', this.AUTO_PUSH_INTERVAL, '毫秒');
+      
+      console.log('⚙️ 配置常量:');
+      console.log('  - this.BATCH_SIZE:', this.BATCH_SIZE);
+      console.log('  - this.AUTO_PUSH_INTERVAL:', this.AUTO_PUSH_INTERVAL, '毫秒');
 
       // 策略 1: 累积满 10 个 commit
       const condition1 = pendingCommits >= this.BATCH_SIZE;
-      console.log('条件1检查 (累积提交数):');
-      console.log(`  - ${pendingCommits} >= ${this.BATCH_SIZE} = ${condition1}`);
+      console.log('🎯 条件1检查 (累积提交数):');
+      console.log(`  - 计算: ${pendingCommits} >= ${this.BATCH_SIZE}`);
+      console.log(`  - 结果: ${condition1}`);
       
       if (condition1) {
         console.log(`✅ 触发条件1: 累积 ${pendingCommits} 个提交 >= ${this.BATCH_SIZE}`);
@@ -702,17 +715,22 @@ jobs:
       }
 
       // 策略 2: 有未提交的内容且距离上次提交超过 4 小时
-      console.log('条件2检查 (时间间隔):');
-      console.log(`  - pendingCommits > 0: ${pendingCommits} > 0 = ${pendingCommits > 0}`);
-      console.log(`  - lastPushTime 存在: ${!!lastPushTime}`);
+      console.log('🕐 条件2检查 (时间间隔):');
+      const hasPendingCommits = pendingCommits > 0;
+      const hasLastPushTime = !!lastPushTime;
+      console.log(`  - pendingCommits > 0: ${pendingCommits} > 0 = ${hasPendingCommits}`);
+      console.log(`  - lastPushTime 存在: ${hasLastPushTime}`);
       
       if (lastPushTime) {
         const timeDiff = now - lastPushTime;
         const timeExceeded = timeDiff >= this.AUTO_PUSH_INTERVAL;
         console.log(`  - 时间差: ${timeDiff} 毫秒 (${Math.round(timeDiff / 1000 / 60)} 分钟)`);
-        console.log(`  - 是否超过4小时: ${timeDiff} >= ${this.AUTO_PUSH_INTERVAL} = ${timeExceeded}`);
+        console.log(`  - 计算: ${timeDiff} >= ${this.AUTO_PUSH_INTERVAL}`);
+        console.log(`  - 是否超过4小时: ${timeExceeded}`);
         
-        const condition2 = pendingCommits > 0 && timeExceeded;
+        const condition2 = hasPendingCommits && timeExceeded;
+        console.log(`  - 最终条件2: ${hasPendingCommits} && ${timeExceeded} = ${condition2}`);
+        
         if (condition2) {
           console.log(`✅ 触发条件2: 有 ${pendingCommits} 个未提交 && 距离上次推送超过4小时`);
           console.log('==============================');
@@ -723,6 +741,7 @@ jobs:
       }
 
       console.log('❌ 不满足任何推送条件，保持本地暂存');
+      console.log('🎯 最终决策: 返回 false');
       console.log('==============================');
       return false;
     }
