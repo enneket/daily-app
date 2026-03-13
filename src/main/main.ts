@@ -259,18 +259,30 @@ ipcMain.handle('get-today-report', async () => {
 });
 
 ipcMain.handle('submit-report', async (_: any, content: string) => {
+  console.log('🚀 [IPC] submit-report 被调用');
+  console.log('📝 [IPC] 提交内容长度:', content?.length || 0);
+  console.log('🔧 [IPC] githubService 存在:', !!githubService);
+  
   if (!githubService) {
+    console.log('⚠️ [IPC] githubService 不存在，尝试创建新实例');
     const config = store.get('github-config') as any;
     if (!config) {
+      console.log('❌ [IPC] 配置不存在');
       return { success: false, error: '请先配置 GitHub 信息' };
     }
+    console.log('✅ [IPC] 配置存在，创建 GitHubService 实例');
     githubService = new GitHubServiceClass(config, store);
+    console.log('✅ [IPC] GitHubService 实例创建完成');
   }
   
   try {
+    console.log('📤 [IPC] 开始调用 githubService.submitReport()');
     await githubService.submitReport(content);
+    console.log('✅ [IPC] submitReport 调用成功');
     return { success: true };
   } catch (error: any) {
+    console.log('❌ [IPC] submitReport 调用失败:', error.message);
+    console.error('❌ [IPC] 完整错误信息:', error);
     return { success: false, error: error.message };
   }
 });

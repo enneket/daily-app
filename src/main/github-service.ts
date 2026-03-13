@@ -50,11 +50,21 @@ class GitHubService {
   };
 
   constructor(config: LocalConfig, store: any) {
+    console.log('🏗️ [GitHubService] 开始初始化');
+    console.log('📋 [GitHubService] 配置信息:', {
+      repoOwner: config.repoOwner,
+      repoName: config.repoName,
+      branch: config.branch,
+      hasToken: !!config.githubToken
+    });
+    
     this.config = config;
     this.store = store;
     this.octokit = new Octokit({
       auth: config.githubToken,
     });
+    
+    console.log('🔧 [GitHubService] Octokit 实例创建完成');
     
     // 调试：打印初始化状态
     console.log('=== GitHubService 初始化 ===');
@@ -67,9 +77,11 @@ class GitHubService {
     
     // 初始化提交计数
     if (!this.store.get('pendingCommits')) {
+      console.log('🔄 [GitHubService] 初始化 pendingCommits 为 0');
       this.store.set('pendingCommits', 0);
     }
     // 不初始化 lastPushTime，让 shouldAutoPush() 使用默认值 0
+    console.log('✅ [GitHubService] 初始化完成');
   }
 
   async testConnection(): Promise<void> {

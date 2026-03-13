@@ -77,30 +77,44 @@ function MainEditor({
   }, [onTodayReportUpdate, onCommitStatusUpdate]);
 
   const handleSubmit = async () => {
+    console.log('🖱️ [Frontend] handleSubmit 被调用');
+    console.log('📝 [Frontend] 内容长度:', content.trim().length);
+    
     if (!content.trim()) {
+      console.log('⚠️ [Frontend] 内容为空，显示错误消息');
       showMessage('error', '请输入日报内容');
       return;
     }
 
     // 防止重复提交
     if (submitting) {
-      console.log('正在提交中，忽略重复请求');
+      console.log('⚠️ [Frontend] 正在提交中，忽略重复请求');
       return;
     }
 
+    console.log('🚀 [Frontend] 开始提交流程');
     setSubmitting(true);
     try {
+      console.log('📤 [Frontend] 调用 window.electronAPI.submitReport');
       const result = await window.electronAPI.submitReport(content);
+      console.log('📥 [Frontend] 收到提交结果:', result);
+      
       if (result.success) {
+        console.log('✅ [Frontend] 提交成功');
         showMessage('success', '已保存到本地');
         setContent('');
+        console.log('🔄 [Frontend] 开始更新数据');
         await onDataUpdate(); // 使用父组件的更新方法
+        console.log('✅ [Frontend] 数据更新完成');
       } else {
+        console.log('❌ [Frontend] 提交失败:', result.error);
         showMessage('error', result.error || '提交失败');
       }
     } catch (error: any) {
+      console.log('💥 [Frontend] 提交过程中发生异常:', error);
       showMessage('error', error.message || '提交失败');
     } finally {
+      console.log('🏁 [Frontend] 提交流程结束');
       setSubmitting(false);
     }
   };
