@@ -16,14 +16,14 @@ interface CommitStatus {
   nextPushTime: number;
 }
 
-function MainEditor({ 
-  onOpenSettings, 
-  todayReport, 
-  commitStatus, 
-  dataLoaded, 
+function MainEditor({
+  onOpenSettings,
+  todayReport,
+  commitStatus,
+  dataLoaded,
   onDataUpdate,
   onTodayReportUpdate,
-  onCommitStatusUpdate 
+  onCommitStatusUpdate
 }: MainEditorProps) {
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -35,26 +35,21 @@ function MainEditor({
   const addDebugInfo = (info: string) => {
     const timestamp = new Date().toLocaleTimeString();
     const debugLine = `[${timestamp}] ${info}`;
-    console.log(debugLine);
     setDebugInfo(prev => {
-      const newInfo = [...prev.slice(-9), debugLine]; // 保留最近10条
+      const newInfo = [...prev.slice(-9), debugLine];
       return newInfo;
     });
   };
 
   useEffect(() => {
     if (!initialized) {
-      const timestamp = new Date().toLocaleTimeString();
-      const debugLine = `[${timestamp}] 🎯 MainEditor 组件已挂载`;
-      console.log(debugLine);
-      setDebugInfo([debugLine]);
       setInitialized(true);
     }
   }, [initialized]);
 
   useEffect(() => {
     // 只保留定时检查，不在组件挂载时加载数据
-    
+
     // 每分钟更新一次提交状态
     const statusInterval = setInterval(async () => {
       try {
@@ -64,19 +59,19 @@ function MainEditor({
         console.error('Failed to load commit status:', error);
       }
     }, 60000);
-    
+
     // 每小时检查一次是否需要跨日刷新
     const refreshInterval = setInterval(async () => {
       const now = new Date();
       const lastRefresh = localStorage.getItem('lastTodayReportRefresh');
       const lastRefreshDate = lastRefresh ? new Date(lastRefresh) : null;
-      
+
       // 如果是新的一天，刷新今日内容
-      if (!lastRefreshDate || 
-          now.toDateString() !== lastRefreshDate.toDateString()) {
+      if (!lastRefreshDate ||
+        now.toDateString() !== lastRefreshDate.toDateString()) {
         console.log('定时检测到新的一天，刷新今日内容');
         onTodayReportUpdate(''); // 先清空显示
-        
+
         try {
           const result = await window.electronAPI.getTodayReport();
           if (result.success) {
@@ -91,7 +86,7 @@ function MainEditor({
         }
       }
     }, 60 * 60 * 1000); // 每小时检查一次
-    
+
     return () => {
       clearInterval(statusInterval);
       clearInterval(refreshInterval);
@@ -101,7 +96,7 @@ function MainEditor({
   const handleSubmit = async () => {
     addDebugInfo('🖱️ handleSubmit 被调用');
     addDebugInfo(`📝 内容长度: ${content.trim().length}`);
-    
+
     if (!content.trim()) {
       addDebugInfo('⚠️ 内容为空，显示错误消息');
       showMessage('error', '请输入日报内容');
@@ -120,7 +115,7 @@ function MainEditor({
       addDebugInfo('📤 调用 window.electronAPI.submitReport');
       const result = await window.electronAPI.submitReport(content);
       addDebugInfo(`📥 收到提交结果: ${JSON.stringify(result)}`);
-      
+
       if (result.success) {
         addDebugInfo('✅ 提交成功');
         showMessage('success', '已保存到本地');
@@ -182,15 +177,15 @@ function MainEditor({
 
   const formatTimeRemaining = () => {
     if (commitStatus.pendingCommits === 0) return '';
-    
+
     const now = Date.now();
     const remaining = commitStatus.nextPushTime - now;
-    
+
     if (remaining <= 0) return '即将自动提交';
-    
+
     const hours = Math.floor(remaining / (60 * 60 * 1000));
     const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
-    
+
     if (hours > 0) {
       return `${hours} 小时 ${minutes} 分钟后自动提交`;
     }
@@ -296,11 +291,10 @@ function MainEditor({
           {/* Message Toast */}
           {message && (
             <div
-              className={`fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg animate-fade-in font-medium ${
-                message.type === 'success'
+              className={`fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg animate-fade-in font-medium ${message.type === 'success'
                   ? 'bg-green-500 text-white'
                   : 'bg-red-500 text-white'
-              }`}
+                }`}
             >
               {message.text}
             </div>

@@ -72,8 +72,7 @@ function App() {
       // 如果是新的一天，清空显示并重新加载
       if (!lastRefreshDate || 
           now.toDateString() !== lastRefreshDate.toDateString()) {
-        console.log('检测到新的一天，刷新今日内容');
-        setTodayReport(''); // 先清空显示
+        setTodayReport('');
         localStorage.setItem('lastTodayReportRefresh', now.toISOString());
       }
       

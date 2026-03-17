@@ -10,7 +10,7 @@ let GitHubServiceClass: any;
 function createWindow() {
   const preloadPath = path.join(__dirname, 'preload.js');
   const fs = require('fs');
-  
+
   // 创建日志函数
   const logFile = path.join(app.getPath('userData'), 'icon-debug.log');
   const log = (msg: string) => {
@@ -23,7 +23,7 @@ function createWindow() {
       // 忽略写入错误
     }
   };
-  
+
   log('=== Debug Info ===');
   log('__dirname: ' + __dirname);
   log('app.getAppPath(): ' + app.getAppPath());
@@ -32,24 +32,24 @@ function createWindow() {
   log('preload exists: ' + fs.existsSync(preloadPath));
   log('Log file: ' + logFile);
   log('==================');
-  
+
   // 设置窗口图标
   let iconPath: string;
-  
+
   if (process.env.NODE_ENV === 'development') {
     // 开发模式：使用 app.getAppPath() 获取应用根目录
     const appPath = app.getAppPath();
     iconPath = process.platform === 'win32'
       ? path.join(appPath, 'build/icon.ico')
       : process.platform === 'darwin'
-      ? path.join(appPath, 'build/icon.icns')
-      : path.join(appPath, 'build/icon.png');
+        ? path.join(appPath, 'build/icon.icns')
+        : path.join(appPath, 'build/icon.png');
   } else {
     // 生产模式：尝试多个可能的路径
     const iconName = process.platform === 'win32' ? 'icon.ico'
       : process.platform === 'darwin' ? 'icon.icns'
-      : 'icon.png';
-    
+        : 'icon.png';
+
     const possiblePaths = [
       // 方式1：从 resources 目录
       path.join((process as any).resourcesPath || '', 'build', iconName),
@@ -60,24 +60,24 @@ function createWindow() {
       // 方式4：相对于 __dirname
       path.join(__dirname, '../../build', iconName),
     ];
-    
+
     // 尝试找到存在的图标文件
     iconPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
     log('Tried paths: ' + JSON.stringify(possiblePaths, null, 2));
     log('Selected path: ' + iconPath);
   }
-  
+
   log('Platform: ' + process.platform);
   log('Icon path: ' + iconPath);
   log('Icon exists: ' + fs.existsSync(iconPath));
-  
+
   // 使用 nativeImage 加载图标
   const icon = nativeImage.createFromPath(iconPath);
   log('Icon loaded: ' + !icon.isEmpty());
   if (!icon.isEmpty()) {
     log('Icon size: ' + JSON.stringify(icon.getSize()));
   }
-  
+
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
@@ -94,10 +94,6 @@ function createWindow() {
     },
   });
 
-  // 立即测试日志
-  console.log('🎯 [TEST] 主进程窗口创建完成 - 时间:', new Date().toISOString());
-  console.log('🎯 [TEST] 这是主进程的测试日志');
-
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
@@ -106,7 +102,7 @@ function createWindow() {
     // 临时启用开发者工具用于调试
     mainWindow.webContents.openDevTools();
   }
-  
+
   // 平台特殊处理
   if (process.platform === 'linux') {
     // Linux/WSL 需要额外设置图标
@@ -123,31 +119,11 @@ function createWindow() {
     // Windows 需要额外设置应用图标
     mainWindow.setIcon(icon);
   }
-  
+
   // 监听 preload 脚本错误
   mainWindow.webContents.on('console-message', (_event: any, _level: any, message: any) => {
     console.log('Renderer console:', message);
   });
-  
-  // 重写 console.log 以转发到渲染进程
-  const originalConsoleLog = console.log;
-  console.log = (...args: any[]) => {
-    originalConsoleLog(...args);
-    // 转发到渲染进程
-    if (mainWindow && mainWindow.webContents) {
-      try {
-        mainWindow.webContents.executeJavaScript(`
-          console.log('[主进程]', ${JSON.stringify(args.map(arg => 
-            typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-          ))});
-        `);
-      } catch (e) {
-        // 忽略转发错误
-      }
-    }
-  };
-  
-  console.log('🎯 [TEST] 主进程日志转发已设置');
 }
 
 // 单实例锁定
@@ -172,7 +148,7 @@ if (!gotTheLock) {
     // 动态加载 GitHubService 避免编译时冲突
     const githubServiceModule = require('./github-service');
     GitHubServiceClass = githubServiceModule.GitHubService;
-    
+
     createWindow();
 
     app.on('activate', () => {
@@ -197,12 +173,12 @@ ipcMain.handle('get-config', async () => {
 ipcMain.handle('save-config', async (_: any, config: any) => {
   store.set('github-config', config);
   githubService = new GitHubServiceClass(config, store);
-  
+
   // 保存配置后自动初始化/更新仓库
   try {
     const result = await githubService.testConnectionAndInitialize();
-    return { 
-      success: true, 
+    return {
+      success: true,
       initialized: result.initialized,
       skipped: result.skipped,
       updated: result.updated,
@@ -211,8 +187,8 @@ ipcMain.handle('save-config', async (_: any, config: any) => {
   } catch (error: any) {
     console.error('初始化/更新仓库失败:', error);
     // 如果是初始化/更新失败，返回错误
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: error.message || '操作失败，请检查网络连接和权限'
     };
   }
@@ -226,7 +202,7 @@ ipcMain.handle('test-connection', async () => {
     }
     githubService = new GitHubServiceClass(config, store);
   }
-  
+
   try {
     await githubService.testConnection();
     return { success: true };
@@ -256,7 +232,7 @@ setInterval(async () => {
   if (githubService) {
     const status = githubService.getCommitStatus();
     const now = Date.now();
-    
+
     // 检查是否需要自动提交（有未提交内容且超过 4 小时）
     if (status.pendingCommits > 0 && (now - status.lastPushTime) >= 4 * 60 * 60 * 1000) {
       console.log('定时检查：触发自动提交');
@@ -273,7 +249,7 @@ ipcMain.handle('get-today-report', async () => {
     }
     githubService = new GitHubServiceClass(config, store);
   }
-  
+
   try {
     const content = await githubService.getTodayReport();
     return { success: true, content };
@@ -283,30 +259,19 @@ ipcMain.handle('get-today-report', async () => {
 });
 
 ipcMain.handle('submit-report', async (_: any, content: string) => {
-  console.log('🚀 [IPC] submit-report 被调用');
-  console.log('📝 [IPC] 提交内容长度:', content?.length || 0);
-  console.log('🔧 [IPC] githubService 存在:', !!githubService);
-  
   if (!githubService) {
-    console.log('⚠️ [IPC] githubService 不存在，尝试创建新实例');
     const config = store.get('github-config') as any;
     if (!config) {
-      console.log('❌ [IPC] 配置不存在');
       return { success: false, error: '请先配置 GitHub 信息' };
     }
-    console.log('✅ [IPC] 配置存在，创建 GitHubService 实例');
     githubService = new GitHubServiceClass(config, store);
-    console.log('✅ [IPC] GitHubService 实例创建完成');
   }
-  
+
   try {
-    console.log('📤 [IPC] 开始调用 githubService.submitReport()');
     await githubService.submitReport(content);
-    console.log('✅ [IPC] submitReport 调用成功');
     return { success: true };
   } catch (error: any) {
-    console.log('❌ [IPC] submitReport 调用失败:', error.message);
-    console.error('❌ [IPC] 完整错误信息:', error);
+    console.error('submitReport 失败:', error.message);
     return { success: false, error: error.message };
   }
 });
