@@ -815,18 +815,6 @@ jobs:
         sha
       });
       this.store.set('pendingCommits', newPendingCommits);
-
-      // 检查是否需要自动提交到 GitHub
-      const shouldPush = this.shouldAutoPush();
-
-      if (shouldPush) {
-        await this.pushToGitHub(filePath, newContent, sha);
-
-        // 清除缓存和计数
-        this.store.delete('cachedReport');
-        this.store.set('pendingCommits', 0);
-        this.store.set('lastPushTime', Date.now());
-      }
     } finally {
       this.isSubmitting = false;
     }
