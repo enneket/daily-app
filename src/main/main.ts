@@ -99,8 +99,6 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
-    // 临时启用开发者工具用于调试
-    mainWindow.webContents.openDevTools();
   }
 
   // 平台特殊处理
