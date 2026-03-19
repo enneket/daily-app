@@ -29,24 +29,6 @@ function MainEditor({
   const [submitting, setSubmitting] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string[]>([]);
-  const [initialized, setInitialized] = useState(false);
-
-  const addDebugInfo = (info: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const debugLine = `[${timestamp}] ${info}`;
-    setDebugInfo(prev => {
-      const newInfo = [...prev.slice(-9), debugLine];
-      return newInfo;
-    });
-  };
-
-  useEffect(() => {
-    if (!initialized) {
-      setInitialized(true);
-    }
-  }, [initialized]);
-
   useEffect(() => {
     // 只保留定时检查，不在组件挂载时加载数据
 
@@ -94,44 +76,27 @@ function MainEditor({
   }, []); // 移除依赖项，避免重复执行
 
   const handleSubmit = async () => {
-    addDebugInfo('🖱️ handleSubmit 被调用');
-    addDebugInfo(`📝 内容长度: ${content.trim().length}`);
-
     if (!content.trim()) {
-      addDebugInfo('⚠️ 内容为空，显示错误消息');
       showMessage('error', '请输入日报内容');
       return;
     }
 
-    // 防止重复提交
-    if (submitting) {
-      addDebugInfo('⚠️ 正在提交中，忽略重复请求');
-      return;
-    }
+    if (submitting) return;
 
-    addDebugInfo('🚀 开始提交流程');
     setSubmitting(true);
     try {
-      addDebugInfo('📤 调用 window.electronAPI.submitReport');
       const result = await window.electronAPI.submitReport(content);
-      addDebugInfo(`📥 收到提交结果: ${JSON.stringify(result)}`);
 
       if (result.success) {
-        addDebugInfo('✅ 提交成功');
         showMessage('success', '已保存到本地');
         setContent('');
-        addDebugInfo('🔄 开始更新数据');
-        await onDataUpdate(); // 使用父组件的更新方法
-        addDebugInfo('✅ 数据更新完成');
+        await onDataUpdate();
       } else {
-        addDebugInfo(`❌ 提交失败: ${result.error}`);
         showMessage('error', result.error || '提交失败');
       }
     } catch (error: any) {
-      addDebugInfo(`💥 提交过程中发生异常: ${error.message}`);
       showMessage('error', error.message || '提交失败');
     } finally {
-      addDebugInfo('🏁 提交流程结束');
       setSubmitting(false);
     }
   };
@@ -234,18 +199,6 @@ function MainEditor({
                 >
                   {pushing ? '提交中...' : '立即提交'}
                 </button>
-              </div>
-            </div>
-          )}
-
-          {/* Debug Info */}
-          {debugInfo.length > 0 && (
-            <div className="mx-6 mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <div className="text-sm text-gray-800 font-medium mb-2">调试信息：</div>
-              <div className="text-xs text-gray-600 font-mono max-h-32 overflow-y-auto">
-                {debugInfo.map((info, index) => (
-                  <div key={index}>{info}</div>
-                ))}
               </div>
             </div>
           )}
