@@ -11,27 +11,17 @@ function createWindow() {
   const preloadPath = path.join(__dirname, 'preload.js');
   const fs = require('fs');
 
-  // 创建日志函数
+  // 创建日志函数（仅写入文件，不输出到控制台）
   const logFile = path.join(app.getPath('userData'), 'icon-debug.log');
   const log = (msg: string) => {
     const timestamp = new Date().toISOString();
     const logMsg = `[${timestamp}] ${msg}\n`;
-    console.log(msg);
     try {
       fs.appendFileSync(logFile, logMsg);
     } catch (e) {
       // 忽略写入错误
     }
   };
-
-  log('=== Debug Info ===');
-  log('__dirname: ' + __dirname);
-  log('app.getAppPath(): ' + app.getAppPath());
-  log('app.getPath(userData): ' + app.getPath('userData'));
-  log('preload path: ' + preloadPath);
-  log('preload exists: ' + fs.existsSync(preloadPath));
-  log('Log file: ' + logFile);
-  log('==================');
 
   // 设置窗口图标
   let iconPath: string;
@@ -110,7 +100,7 @@ function createWindow() {
       try {
         app.setIcon(icon);
       } catch (e) {
-        console.log('Failed to set app icon:', e);
+        // 忽略图标设置失败
       }
     }
   } else if (process.platform === 'win32') {
@@ -118,10 +108,7 @@ function createWindow() {
     mainWindow.setIcon(icon);
   }
 
-  // 监听 preload 脚本错误
-  mainWindow.webContents.on('console-message', (_event: any, _level: any, message: any) => {
-    console.log('Renderer console:', message);
-  });
+
 }
 
 // 单实例锁定
@@ -233,7 +220,6 @@ setInterval(async () => {
 
     // 检查是否需要自动提交（有未提交内容且超过 4 小时）
     if (status.pendingCommits > 0 && (now - status.lastPushTime) >= 4 * 60 * 60 * 1000) {
-      console.log('定时检查：触发自动提交');
       await githubService.manualPush();
     }
   }

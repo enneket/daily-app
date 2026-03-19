@@ -116,7 +116,6 @@ class GitHubService {
 
         // 比较整体版本
         if (versionInfo.version !== this.CURRENT_VERSION) {
-          console.log(`版本不匹配: ${versionInfo.version} -> ${this.CURRENT_VERSION}`);
           return { needsUpdate: true, outdatedFiles: Object.keys(this.FILE_VERSIONS) };
         }
 
@@ -129,16 +128,13 @@ class GitHubService {
         }
 
         if (outdatedFiles.length > 0) {
-          console.log(`发现 ${outdatedFiles.length} 个过期文件`);
           return { needsUpdate: true, outdatedFiles };
         }
 
-        console.log('仓库已是最新版本');
         return { needsUpdate: false, outdatedFiles: [] };
       }
     } catch (error) {
       // 没有版本文件，需要完整初始化
-      console.log('未找到版本文件，需要初始化');
       return { needsUpdate: true, outdatedFiles: Object.keys(this.FILE_VERSIONS) };
     }
 
@@ -177,8 +173,6 @@ class GitHubService {
       'site/calendar-complex.md.bak'
     ];
 
-    console.log('检查并清理已移除的文件...');
-
     for (const filePath of removedFiles) {
       try {
         const { data } = await this.octokit.repos.getContent({
@@ -197,7 +191,7 @@ class GitHubService {
             sha: data.sha,
             branch: this.config.branch,
           });
-          console.log(`  ✓ 已删除: ${filePath}`);
+
         }
       } catch (error: any) {
         if (error.status === 404) {
@@ -213,8 +207,6 @@ class GitHubService {
    * 迁移旧的日报文件从 docs/ 到 site/docs/
    */
   private async migrateOldReports(): Promise<void> {
-    console.log('检查是否需要迁移旧的日报文件...');
-
     try {
       // 检查 docs/ 目录是否存在
       const { data: docsContent } = await this.octokit.repos.getContent({
@@ -225,7 +217,6 @@ class GitHubService {
       });
 
       if (!Array.isArray(docsContent)) {
-        console.log('docs/ 不是目录，无需迁移');
         return;
       }
 
@@ -235,11 +226,8 @@ class GitHubService {
       );
 
       if (!hasReports) {
-        console.log('docs/ 目录中没有日报文件，无需迁移');
         return;
       }
-
-      console.log('发现旧的日报文件，开始迁移...');
 
       // 递归获取所有日报文件
       const reportFiles: Array<{ path: string; content: string; sha: string }> = [];
@@ -258,7 +246,6 @@ class GitHubService {
           if (item.type === 'dir') {
             await scanDirectory(item.path);
           } else if (item.type === 'file' && item.name.endsWith('.md')) {
-            // 读取文件内容
             const { data: fileData } = await this.octokit.repos.getContent({
               owner: this.config.repoOwner,
               repo: this.config.repoName,
@@ -279,15 +266,11 @@ class GitHubService {
 
       await scanDirectory('docs');
 
-      console.log(`找到 ${reportFiles.length} 个日报文件，开始迁移...`);
-
       // 迁移文件
       for (const file of reportFiles) {
-        // 计算新路径：docs/2026/02/12.md -> site/docs/2026/02/12.md
         const newPath = file.path.replace(/^docs\//, 'site/docs/');
 
         try {
-          // 创建新文件
           await this.octokit.repos.createOrUpdateFileContents({
             owner: this.config.repoOwner,
             repo: this.config.repoName,
@@ -296,8 +279,6 @@ class GitHubService {
             content: Buffer.from(file.content).toString('base64'),
             branch: this.config.branch,
           });
-
-          console.log(`  ✓ 迁移: ${file.path} -> ${newPath}`);
 
           // 删除旧文件
           await this.octokit.repos.deleteFile({
@@ -313,12 +294,8 @@ class GitHubService {
         }
       }
 
-      console.log(`✓ 迁移完成！共迁移 ${reportFiles.length} 个日报文件`);
-
     } catch (error: any) {
-      if (error.status === 404) {
-        console.log('未找到 docs/ 目录，无需迁移');
-      } else {
+      if (error.status !== 404) {
         console.error('迁移过程出错:', error.message);
       }
     }
@@ -328,8 +305,6 @@ class GitHubService {
    * 更新日报仓库文件
    */
   private async updateRepoFiles(filesToUpdate: string[]): Promise<void> {
-    console.log(`开始更新日报仓库，共 ${filesToUpdate.length} 个文件...`);
-
     // 检查并迁移旧的日报文件
     await this.migrateOldReports();
 
@@ -532,7 +507,6 @@ jobs:
             branch: this.config.branch,
             sha: sha,
           });
-          console.log(`已更新: ${file.path}`);
         } catch (error: any) {
           console.error(`更新文件失败 ${file.path}:`, error.message);
           failedFiles.push(file.path);
@@ -540,11 +514,8 @@ jobs:
       }
 
       if (failedFiles.length > 0) {
-        console.warn(`以下文件更新失败: ${failedFiles.join(', ')}`);
         throw new Error(`部分文件更新失败: ${failedFiles.join(', ')}`);
       }
-
-      console.log('日报仓库更新完成！');
     } catch (error) {
       console.error('更新仓库失败:', error);
       throw new Error('更新仓库失败，请检查权限和网络连接');
@@ -675,7 +646,6 @@ jobs:
     const condition1 = pendingCommits >= this.BATCH_SIZE;
 
     if (condition1) {
-      console.log(`shouldAutoPush: 累积 ${pendingCommits} 个提交，触发自动推送`);
       return true;
     }
 
@@ -689,7 +659,6 @@ jobs:
       const condition2 = hasPendingCommits && timeExceeded;
 
       if (condition2) {
-        console.log(`shouldAutoPush: 距离上次推送 ${Math.round(timeDiff / 1000 / 60)} 分钟，触发自动推送`);
         return true;
       }
     }
@@ -754,7 +723,6 @@ jobs:
   async submitReport(content: string): Promise<void> {
     // 防止并发提交
     if (this.isSubmitting) {
-      console.log('正在提交中，跳过重复请求');
       throw new Error('正在提交中，请稍后再试');
     }
 
@@ -798,7 +766,6 @@ jobs:
 
       // 检查是否为重复内容
       if (this.isDuplicateContent(existingContent, content, timestamp)) {
-        console.log('检测到重复内容，跳过提交');
         return;
       }
 
