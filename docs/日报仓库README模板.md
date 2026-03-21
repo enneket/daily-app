@@ -135,4 +135,4 @@ MIT License
 
 **构建工具**: [日报桌面应用](https://github.com/你的用户名/daily-app)
 
-**当前版本**: v1.2.2
+**当前版本**: v1.0.4
