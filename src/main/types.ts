@@ -5,7 +5,7 @@ import Store from 'electron-store';
 export type AppStore = Store;
 
 export interface LocalConfig {
-  githubToken: string;
+  githubToken?: string; // 现在token单独存储，这个字段可能为空
   repoOwner: string;
   repoName: string;
   branch: string;

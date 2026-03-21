@@ -4,7 +4,8 @@ import * as path from 'path';
 import Store from 'electron-store';
 import { LocalConfig, AppStore } from './types';
 import { GitHubService } from './github-service';
-import { getGitHubService } from './service-locator';
+import { getGitHubService, resetGitHubService } from './service-locator';
+import { saveToken } from './crypto';
 
 const store: AppStore = new Store();
 let mainWindow: BrowserWindow | null = null;
@@ -148,7 +149,18 @@ ipcMain.handle('get-config', async () => {
 });
 
 ipcMain.handle('save-config', async (_event: IpcMainInvokeEvent, config: LocalConfig) => {
-  store.set('github-config', config);
+  // 将 token 单独加密存储
+  if (config.githubToken) {
+    saveToken(config.githubToken, store);
+    // 保存配置时不包含明文 token
+    const configWithoutToken = { ...config, githubToken: undefined };
+    store.set('github-config', configWithoutToken);
+  } else {
+    store.set('github-config', config);
+  }
+
+  // 重置单例以使用新配置
+  resetGitHubService();
   githubService = getGitHubService(store, config);
 
   // 保存配置后自动初始化/更新仓库
