@@ -1,11 +1,14 @@
-const { app, BrowserWindow, ipcMain, nativeImage } = require('electron');
-const path = require('path');
-const Store = require('electron-store');
+import { app, BrowserWindow, ipcMain, nativeImage } from 'electron';
+import type { IpcMainInvokeEvent } from 'electron';
+import * as path from 'path';
+import Store from 'electron-store';
+import { LocalConfig, AppStore } from './types';
+import { GitHubService } from './github-service';
+import { getGitHubService } from './service-locator';
 
-const store = new Store();
-let mainWindow: any = null;
-let githubService: any = null;
-let GitHubServiceClass: any;
+const store: AppStore = new Store();
+let mainWindow: BrowserWindow | null = null;
+let githubService: GitHubService | null = null;
 
 function createWindow() {
   const preloadPath = path.join(__dirname, 'preload.js');
@@ -42,7 +45,7 @@ function createWindow() {
 
     const possiblePaths = [
       // 方式1：从 resources 目录
-      path.join((process as any).resourcesPath || '', 'build', iconName),
+      path.join(process.resourcesPath || '', 'build', iconName),
       // 方式2：从 app.asar 同级目录
       path.join(path.dirname(app.getPath('exe')), 'resources', 'build', iconName),
       // 方式3：从 app.getAppPath()
@@ -80,7 +83,7 @@ function createWindow() {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false, // 开发模式禁用沙箱（Linux 兼容性）
+      sandbox: true, // 启用沙箱提升安全性
     },
   });
 
@@ -95,14 +98,6 @@ function createWindow() {
   if (process.platform === 'linux') {
     // Linux/WSL 需要额外设置图标
     mainWindow.setIcon(icon);
-    // 尝试设置应用级图标
-    if (!icon.isEmpty()) {
-      try {
-        app.setIcon(icon);
-      } catch (e) {
-        // 忽略图标设置失败
-      }
-    }
   } else if (process.platform === 'win32') {
     // Windows 需要额外设置应用图标
     mainWindow.setIcon(icon);
@@ -119,7 +114,8 @@ if (!gotTheLock) {
   app.quit();
 } else {
   // 当第二个实例尝试启动时触发
-  app.on('second-instance', (_event: any, _commandLine: any, _workingDirectory: any) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (app as any).on('second-instance', (_event: Electron.IpcMainEvent, commandLine: string[], workingDirectory: string) => {
     // 如果主窗口存在，聚焦它
     if (mainWindow) {
       if (mainWindow.isMinimized()) {
@@ -130,10 +126,6 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
-    // 动态加载 GitHubService 避免编译时冲突
-    const githubServiceModule = require('./github-service');
-    GitHubServiceClass = githubServiceModule.GitHubService;
-
     createWindow();
 
     app.on('activate', () => {
@@ -155,9 +147,9 @@ ipcMain.handle('get-config', async () => {
   return store.get('github-config');
 });
 
-ipcMain.handle('save-config', async (_: any, config: any) => {
+ipcMain.handle('save-config', async (_event: IpcMainInvokeEvent, config: LocalConfig) => {
   store.set('github-config', config);
-  githubService = new GitHubServiceClass(config, store);
+  githubService = getGitHubService(store, config);
 
   // 保存配置后自动初始化/更新仓库
   try {
@@ -169,30 +161,31 @@ ipcMain.handle('save-config', async (_: any, config: any) => {
       updated: result.updated,
       updatedFiles: result.updatedFiles
     };
-  } catch (error: any) {
-    console.error('初始化/更新仓库失败:', error);
-    // 如果是初始化/更新失败，返回错误
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败，请检查网络连接和权限';
+    console.error('初始化/更新仓库失败:', errorMessage);
     return {
       success: false,
-      error: error.message || '操作失败，请检查网络连接和权限'
+      error: errorMessage
     };
   }
 });
 
 ipcMain.handle('test-connection', async () => {
   if (!githubService) {
-    const config = store.get('github-config') as any;
+    const config = store.get('github-config') as LocalConfig | undefined;
     if (!config) {
       return { success: false, error: '请先配置 GitHub 信息' };
     }
-    githubService = new GitHubServiceClass(config, store);
+    githubService = getGitHubService(store, config);
   }
 
   try {
     await githubService.testConnection();
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '连接失败';
+    return { success: false, error: errorMessage };
   }
 });
 
@@ -227,35 +220,37 @@ setInterval(async () => {
 
 ipcMain.handle('get-today-report', async () => {
   if (!githubService) {
-    const config = store.get('github-config') as any;
+    const config = store.get('github-config') as LocalConfig | undefined;
     if (!config) {
       return { success: false, error: '请先配置 GitHub 信息' };
     }
-    githubService = new GitHubServiceClass(config, store);
+    githubService = getGitHubService(store, config);
   }
 
   try {
     const content = await githubService.getTodayReport();
     return { success: true, content };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '获取日报失败';
+    return { success: false, error: errorMessage };
   }
 });
 
-ipcMain.handle('submit-report', async (_: any, content: string) => {
+ipcMain.handle('submit-report', async (_event: IpcMainInvokeEvent, content: string) => {
   if (!githubService) {
-    const config = store.get('github-config') as any;
+    const config = store.get('github-config') as LocalConfig | undefined;
     if (!config) {
       return { success: false, error: '请先配置 GitHub 信息' };
     }
-    githubService = new GitHubServiceClass(config, store);
+    githubService = getGitHubService(store, config);
   }
 
   try {
     await githubService.submitReport(content);
     return { success: true };
-  } catch (error: any) {
-    console.error('submitReport 失败:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '提交失败';
+    console.error('submitReport 失败:', errorMessage);
+    return { success: false, error: errorMessage };
   }
 });

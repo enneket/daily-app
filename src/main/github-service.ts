@@ -1,35 +1,25 @@
-const { Octokit } = require('@octokit/rest');
-const fsModule = require('fs');
-const pathModule = require('path');
+import { Octokit } from '@octokit/rest';
+import * as fsModule from 'fs';
+import * as pathModule from 'path';
+import * as packageJson from '../../package.json';
+import { LocalConfig, RepoConfig, AppStore, CachedReport } from './types';
+import { SUBMIT_STRATEGY, API_CONFIG } from './constants';
 
-interface LocalConfig {
-  githubToken: string;
-  repoOwner: string;
-  repoName: string;
-  branch: string;
-}
-
-interface RepoConfig {
-  dailyReportPath: string;
-  timezone: string;
-  dateFormat: string;
-  timeFormat: string;
-}
-
-class GitHubService {
-  private octokit: any;
+export class GitHubService {
+  private octokit: Octokit;
   private config: LocalConfig;
   private repoConfig?: RepoConfig;
-  private store: any;
+  private store: AppStore;
 
   // 提交策略配置
-  private readonly BATCH_SIZE = 10;  // 累积 10 个 commit 后提交
+  private readonly BATCH_SIZE = SUBMIT_STRATEGY.BATCH_SIZE;
   // 提交锁，防止并发提交
   private isSubmitting = false;
-  private readonly AUTO_PUSH_INTERVAL = 4 * 60 * 60 * 1000;  // 4 小时（毫秒）
+  private readonly AUTO_PUSH_INTERVAL = SUBMIT_STRATEGY.AUTO_PUSH_INTERVAL;
+  private readonly MAX_CONCURRENT_UPLOADS = API_CONFIG.MAX_CONCURRENT_UPLOADS;
 
   // 版本管理
-  private readonly CURRENT_VERSION = '1.0.3';
+  private readonly CURRENT_VERSION: string;
   private readonly FILE_VERSIONS: Record<string, string> = {
     'site/.vitepress/config.ts': '1.0.3',
     'site/.vitepress/reports-index.data.ts': '1.1.0',
@@ -49,9 +39,10 @@ class GitHubService {
     'README.md': '1.0.0'
   };
 
-  constructor(config: LocalConfig, store: any) {
+  constructor(config: LocalConfig, store: AppStore) {
     this.config = config;
     this.store = store;
+    this.CURRENT_VERSION = (packageJson as { version: string }).version || '1.0.0';
     this.octokit = new Octokit({
       auth: config.githubToken,
     });
@@ -193,14 +184,71 @@ class GitHubService {
           });
 
         }
-      } catch (error: any) {
-        if (error.status === 404) {
+      } catch (error: unknown) {
+        if ((error as { status?: number }).status === 404) {
           // 文件不存在，无需删除
         } else {
-          console.warn(`清理文件失败 ${filePath}:`, error.message);
+          const message = error instanceof Error ? error.message : String(error);
+          console.warn(`清理文件失败 ${filePath}:`, message);
         }
       }
     }
+  }
+
+  /**
+   * 批量上传文件到 GitHub（分批并发）
+   */
+  private async uploadFilesInBatches(files: Array<{ path: string; content: string | Buffer }>): Promise<string[]> {
+    const failedFiles: string[] = [];
+
+    for (let i = 0; i < files.length; i += this.MAX_CONCURRENT_UPLOADS) {
+      const batch = files.slice(i, i + this.MAX_CONCURRENT_UPLOADS);
+
+      const results = await Promise.allSettled(
+        batch.map(file => this.uploadSingleFile(file))
+      );
+
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          failedFiles.push(batch[index].path);
+        }
+      });
+    }
+
+    return failedFiles;
+  }
+
+  /**
+   * 上传单个文件到 GitHub
+   */
+  private async uploadSingleFile(file: { path: string; content: string | Buffer }): Promise<void> {
+    // 获取现有文件的 SHA（如果存在）
+    let sha: string | undefined;
+    try {
+      const { data } = await this.octokit.repos.getContent({
+        owner: this.config.repoOwner,
+        repo: this.config.repoName,
+        path: file.path,
+        ref: this.config.branch,
+      });
+      if ('sha' in data) {
+        sha = data.sha;
+      }
+    } catch (error) {
+      // 文件不存在，不需要 SHA
+    }
+
+    await this.octokit.repos.createOrUpdateFileContents({
+      owner: this.config.repoOwner,
+      repo: this.config.repoName,
+      path: file.path,
+      message: `Update: ${file.path} to v${this.CURRENT_VERSION}`,
+      content: Buffer.isBuffer(file.content)
+        ? file.content.toString('base64')
+        : Buffer.from(file.content).toString('base64'),
+      branch: this.config.branch,
+      sha: sha,
+    });
   }
 
   /**
@@ -289,14 +337,16 @@ class GitHubService {
             sha: file.sha,
             branch: this.config.branch,
           });
-        } catch (error: any) {
-          console.error(`迁移文件失败 ${file.path}:`, error.message);
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(`迁移文件失败 ${file.path}:`, message);
         }
       }
 
-    } catch (error: any) {
-      if (error.status !== 404) {
-        console.error('迁移过程出错:', error.message);
+    } catch (error: unknown) {
+      if ((error as { status?: number }).status !== 404) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('迁移过程出错:', message);
       }
     }
   }
@@ -476,47 +526,13 @@ jobs:
       // 始终更新版本文件
       files.push({ path: '.daily-version.json', content: JSON.stringify(versionInfo, null, 2) });
 
-      // 逐个上传文件
-      const failedFiles: string[] = [];
-      for (const file of files) {
-        try {
-          // 获取现有文件的 SHA（如果存在）
-          let sha: string | undefined;
-          try {
-            const { data } = await this.octokit.repos.getContent({
-              owner: this.config.repoOwner,
-              repo: this.config.repoName,
-              path: file.path,
-              ref: this.config.branch,
-            });
-            if ('sha' in data) {
-              sha = data.sha;
-            }
-          } catch (error) {
-            // 文件不存在，不需要 SHA
-          }
-
-          await this.octokit.repos.createOrUpdateFileContents({
-            owner: this.config.repoOwner,
-            repo: this.config.repoName,
-            path: file.path,
-            message: `Update: ${file.path} to v${this.CURRENT_VERSION}`,
-            content: Buffer.isBuffer(file.content)
-              ? file.content.toString('base64')
-              : Buffer.from(file.content).toString('base64'),
-            branch: this.config.branch,
-            sha: sha,
-          });
-        } catch (error: any) {
-          console.error(`更新文件失败 ${file.path}:`, error.message);
-          failedFiles.push(file.path);
-        }
-      }
+      // 批量并发上传文件
+      const failedFiles: string[] = await this.uploadFilesInBatches(files);
 
       if (failedFiles.length > 0) {
         throw new Error(`部分文件更新失败: ${failedFiles.join(', ')}`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('更新仓库失败:', error);
       throw new Error('更新仓库失败，请检查权限和网络连接');
     }
@@ -544,7 +560,7 @@ jobs:
     const filePath = this.generateFilePath(today);
 
     // 1. 先检查本地缓存
-    const cachedReport = this.store.get('cachedReport');
+    const cachedReport = this.store.get('cachedReport') as CachedReport | null;
     if (cachedReport && cachedReport.filePath === filePath) {
       return this.filterTodayContent(cachedReport.content, todayDateString);
     }
@@ -623,8 +639,8 @@ jobs:
    * 获取提交状态信息
    */
   getCommitStatus(): { pendingCommits: number; lastPushTime: number; nextPushTime: number } {
-    const pendingCommits = this.store.get('pendingCommits') || 0;
-    const lastPushTime = this.store.get('lastPushTime') || 0; // 修复：使用 0 而不是 Date.now()
+    const pendingCommits = (this.store.get('pendingCommits') as number) || 0;
+    const lastPushTime = (this.store.get('lastPushTime') as number) || 0;
     const nextPushTime = lastPushTime + this.AUTO_PUSH_INTERVAL;
 
     return {
@@ -639,8 +655,8 @@ jobs:
    */
   private shouldAutoPush(): boolean {
     // 立即获取所有相关数据
-    const pendingCommits = this.store.get('pendingCommits') || 0;
-    const lastPushTime = this.store.get('lastPushTime');
+    const pendingCommits = (this.store.get('pendingCommits') as number) || 0;
+    const lastPushTime = this.store.get('lastPushTime') as number | undefined;
     const now = Date.now();
 
     const condition1 = pendingCommits >= this.BATCH_SIZE;
@@ -685,7 +701,7 @@ jobs:
    * 手动触发提交到 GitHub
    */
   async manualPush(): Promise<{ success: boolean; message: string; pushed: number }> {
-    const pendingCommits = this.store.get('pendingCommits') || 0;
+    const pendingCommits = (this.store.get('pendingCommits') as number) || 0;
 
     if (pendingCommits === 0) {
       return { success: false, message: '没有待提交的内容', pushed: 0 };
@@ -693,7 +709,7 @@ jobs:
 
     try {
       // 获取本地缓存的日报内容
-      const cachedReport = this.store.get('cachedReport');
+      const cachedReport = this.store.get('cachedReport') as CachedReport | null;
       if (!cachedReport) {
         return { success: false, message: '没有缓存的日报内容', pushed: 0 };
       }
@@ -711,10 +727,11 @@ jobs:
         message: `已提交 ${pendingCommits} 个更新到 GitHub`,
         pushed: pendingCommits
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '提交失败';
       return {
         success: false,
-        message: `提交失败: ${error.message}`,
+        message: `提交失败: ${message}`,
         pushed: 0
       };
     }
@@ -741,7 +758,7 @@ jobs:
       let sha: string | undefined;
 
       // 先尝试从缓存获取
-      const cachedReport = this.store.get('cachedReport');
+      const cachedReport = this.store.get('cachedReport') as CachedReport | null;
       if (cachedReport && cachedReport.filePath === filePath) {
         existingContent = cachedReport.content;
         sha = cachedReport.sha;
@@ -773,7 +790,7 @@ jobs:
       const newContent = `${existingContent}\n## ${timestamp}\n${content}\n`;
 
       // 原子性更新缓存和计数
-      const currentPending = this.store.get('pendingCommits') || 0;
+      const currentPending = (this.store.get('pendingCommits') as number) || 0;
       const newPendingCommits = currentPending + 1;
 
       this.store.set('cachedReport', {

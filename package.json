@@ -48,6 +48,7 @@
   },
   "dependencies": {
     "@octokit/rest": "^20.0.2",
+    "electron-log": "^5.4.3",
     "electron-store": "^8.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
@@ -69,7 +70,9 @@
       {
         "from": "build",
         "to": "build",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "asar": true,
