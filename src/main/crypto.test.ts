@@ -198,5 +198,29 @@ describe('crypto module', () => {
       expect(result).toBe('string_token');
       expect(mockDecryptString).not.toHaveBeenCalled();
     });
+
+    it('加密可用但token不是Buffer时应走降级路径返回string', () => {
+      // 这是 line 44 的分支覆盖测试
+      // 条件: isEncrypted=true, isEncryptionAvailable=true, 但 Buffer.isBuffer(token)=false
+      mockIsEncryptionAvailable.mockReturnValue(true);
+      mockDecryptString.mockReturnValue('should_not_be_called');
+
+      const store = {
+        get: vi.fn((key: string) => {
+          if (key === 'github-token') return 'fallback_token';
+          if (key === 'github-token-encrypted') return true;
+          return undefined;
+        }),
+      } as any;
+
+      const result = loadToken(store);
+
+      // 应该走降级路径，返回字符串而不是解密
+      expect(result).toBe('fallback_token');
+      // 解密不应被调用，因为 token 不是 Buffer
+      expect(mockDecryptString).not.toHaveBeenCalled();
+      // isEncryptionAvailable 应该被调用了
+      expect(mockIsEncryptionAvailable).toHaveBeenCalled();
+    });
   });
 });

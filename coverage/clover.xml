@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1774087565099" clover="3.2.0">
-  <project timestamp="1774087565099" name="All files">
+<coverage generated="1774088183292" clover="3.2.0">
+  <project timestamp="1774088183292" name="All files">
     <metrics statements="264" coveredstatements="82" conditionals="137" coveredconditionals="30" methods="34" coveredmethods="15" elements="435" coveredelements="127" complexity="0" loc="264" ncloc="264" packages="2" files="4" classes="4"/>
     <package name="daily-app">
       <metrics statements="11" coveredstatements="11" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
@@ -35,21 +35,21 @@
         <line num="5" count="1" type="stmt"/>
         <line num="8" count="3" type="stmt"/>
         <line num="12" count="2" type="stmt"/>
-        <line num="16" count="8" type="stmt"/>
+        <line num="16" count="9" type="stmt"/>
         <line num="20" count="4" type="cond" truecount="2" falsecount="0"/>
         <line num="21" count="2" type="stmt"/>
         <line num="22" count="2" type="stmt"/>
         <line num="23" count="2" type="stmt"/>
         <line num="26" count="2" type="stmt"/>
         <line num="27" count="2" type="stmt"/>
-        <line num="33" count="6" type="stmt"/>
-        <line num="34" count="6" type="stmt"/>
-        <line num="36" count="6" type="cond" truecount="2" falsecount="0"/>
-        <line num="37" count="3" type="cond" truecount="4" falsecount="0"/>
-        <line num="39" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="33" count="7" type="stmt"/>
+        <line num="34" count="7" type="stmt"/>
+        <line num="36" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="37" count="4" type="cond" truecount="4" falsecount="0"/>
+        <line num="39" count="3" type="cond" truecount="2" falsecount="0"/>
         <line num="40" count="1" type="stmt"/>
-        <line num="44" count="2" type="cond" truecount="1" falsecount="1"/>
-        <line num="45" count="2" type="stmt"/>
+        <line num="44" count="3" type="cond" truecount="1" falsecount="1"/>
+        <line num="45" count="3" type="stmt"/>
         <line num="50" count="3" type="stmt"/>
         <line num="51" count="3" type="cond" truecount="2" falsecount="0"/>
         <line num="53" count="2" type="stmt"/>
