@@ -27,6 +27,7 @@ export interface VersionInfo {
 export interface CommitStatusResult {
   pendingCommits: number;
   lastPushTime: number;
+  lastCommitTime: number;
   nextPushTime: number;
 }
 

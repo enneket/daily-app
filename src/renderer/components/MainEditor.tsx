@@ -13,6 +13,7 @@ interface MainEditorProps {
 interface CommitStatus {
   pendingCommits: number;
   lastPushTime: number;
+  lastCommitTime: number;
   nextPushTime: number;
 }
 

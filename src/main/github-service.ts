@@ -638,14 +638,20 @@ jobs:
   /**
    * 获取提交状态信息
    */
-  getCommitStatus(): { pendingCommits: number; lastPushTime: number; nextPushTime: number } {
+  getCommitStatus(): { pendingCommits: number; lastPushTime: number; lastCommitTime: number; nextPushTime: number } {
     const pendingCommits = (this.store.get('pendingCommits') as number) || 0;
     const lastPushTime = (this.store.get('lastPushTime') as number) || 0;
-    const nextPushTime = lastPushTime + this.AUTO_PUSH_INTERVAL;
+    const lastCommitTime = (this.store.get('lastCommitTime') as number) || 0;
+
+    // 如果有待提交内容，nextPushTime 基于最后提交时间计算
+    // 否则基于最后推送时间计算
+    const baseTime = pendingCommits > 0 && lastCommitTime > 0 ? lastCommitTime : lastPushTime;
+    const nextPushTime = baseTime + this.AUTO_PUSH_INTERVAL;
 
     return {
       pendingCommits,
       lastPushTime,
+      lastCommitTime,
       nextPushTime
     };
   }
@@ -720,6 +726,7 @@ jobs:
       // 清除缓存和计数
       this.store.delete('cachedReport');
       this.store.set('pendingCommits', 0);
+      this.store.delete('lastCommitTime');
       this.store.set('lastPushTime', Date.now());
 
       return {
@@ -799,6 +806,7 @@ jobs:
         sha
       });
       this.store.set('pendingCommits', newPendingCommits);
+      this.store.set('lastCommitTime', Date.now());
     } finally {
       this.isSubmitting = false;
     }

@@ -204,7 +204,7 @@ ipcMain.handle('test-connection', async () => {
 // 获取提交状态
 ipcMain.handle('get-commit-status', async () => {
   if (!githubService) {
-    return { pendingCommits: 0, lastPushTime: Date.now(), nextPushTime: Date.now() };
+    return { pendingCommits: 0, lastPushTime: 0, lastCommitTime: 0, nextPushTime: 0 };
   }
   return githubService.getCommitStatus();
 });
