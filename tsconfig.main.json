@@ -17,7 +17,6 @@
     "src/main/**/*"
   ],
   "exclude": [
-    "src/main/**/*.test.ts",
     "src/main/logger.ts"
   ]
 }

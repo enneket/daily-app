@@ -116,6 +116,7 @@ describe('GitHubService', () => {
       mockStoreGet.mockImplementation((key: string) => {
         if (key === 'pendingCommits') return 5;
         if (key === 'lastPushTime') return 1000000000000;
+        if (key === 'lastCommitTime') return 1000000001000;
         return undefined;
       });
 
@@ -125,7 +126,8 @@ describe('GitHubService', () => {
 
       expect(status.pendingCommits).toBe(5);
       expect(status.lastPushTime).toBe(1000000000000);
-      expect(status.nextPushTime).toBe(1000000000000 + 4 * 60 * 60 * 1000);
+      expect(status.lastCommitTime).toBe(1000000001000);
+      expect(status.nextPushTime).toBe(1000000001000 + 4 * 60 * 60 * 1000);
     });
 
     it('没有数据时应该返回默认值', () => {
@@ -136,7 +138,50 @@ describe('GitHubService', () => {
 
       expect(status.pendingCommits).toBe(0);
       expect(status.lastPushTime).toBe(0);
+      expect(status.lastCommitTime).toBe(0);
       expect(status.nextPushTime).toBe(4 * 60 * 60 * 1000);
+    });
+
+    it('有待提交内容时应基于 lastCommitTime 计算 nextPushTime', () => {
+      const now = 1000000000000;
+      const lastCommitTime = 1000000001000;
+      mockStoreGet.mockImplementation((key: string) => {
+        if (key === 'pendingCommits') return 3;
+        if (key === 'lastPushTime') return now - 4 * 60 * 60 * 1000; // 4小时前
+        if (key === 'lastCommitTime') return lastCommitTime; // 1秒前
+        return undefined;
+      });
+
+      const mockStore = { get: mockStoreGet, set: mockStoreSet, delete: mockStoreDelete };
+      const service = new GitHubService({ repoOwner: 'test', repoName: 'repo', branch: 'main', githubToken: 'token' }, mockStore as any);
+      const status = service.getCommitStatus();
+
+      // nextPushTime 应该基于 lastCommitTime 而不是 lastPushTime
+      expect(status.pendingCommits).toBe(3);
+      expect(status.lastPushTime).toBe(now - 4 * 60 * 60 * 1000);
+      expect(status.lastCommitTime).toBe(lastCommitTime);
+      expect(status.nextPushTime).toBe(lastCommitTime + 4 * 60 * 60 * 1000);
+    });
+
+    it('没有待提交内容时应基于 lastPushTime 计算 nextPushTime', () => {
+      const lastPushTime = 1000000000000;
+      const lastCommitTime = 1000000001000;
+      mockStoreGet.mockImplementation((key: string) => {
+        if (key === 'pendingCommits') return 0;
+        if (key === 'lastPushTime') return lastPushTime;
+        if (key === 'lastCommitTime') return lastCommitTime;
+        return undefined;
+      });
+
+      const mockStore = { get: mockStoreGet, set: mockStoreSet, delete: mockStoreDelete };
+      const service = new GitHubService({ repoOwner: 'test', repoName: 'repo', branch: 'main', githubToken: 'token' }, mockStore as any);
+      const status = service.getCommitStatus();
+
+      // 即使有 lastCommitTime，没有待提交内容时应该基于 lastPushTime
+      expect(status.pendingCommits).toBe(0);
+      expect(status.lastPushTime).toBe(lastPushTime);
+      expect(status.lastCommitTime).toBe(lastCommitTime);
+      expect(status.nextPushTime).toBe(lastPushTime + 4 * 60 * 60 * 1000);
     });
   });
 
@@ -180,6 +225,85 @@ describe('GitHubService', () => {
       const service = new GitHubService({ repoOwner: 'test', repoName: 'repo', branch: 'main', githubToken: 'token' }, mockStore as any);
       const result = (service as any).shouldAutoPush();
       expect(result).toBe(true);
+    });
+  });
+
+  describe('submitReport', () => {
+    it('提交内容时应该设置 lastCommitTime', async () => {
+      mockStoreGet.mockImplementation((key: string) => {
+        if (key === 'pendingCommits') return 0;
+        if (key === 'cachedReport') return null;
+        return undefined;
+      });
+
+      const mockOctokit = {
+        repos: {
+          getContent: vi.fn().mockResolvedValue({
+            data: { content: Buffer.from('# 日报\n\n').toString('base64'), sha: 'oldsha' }
+          }),
+        },
+      };
+
+      // 使用 vi.spyOn 替换 GitHubService 的 octokit
+      const mockStore = { get: mockStoreGet, set: mockStoreSet, delete: mockStoreDelete };
+      const service = new GitHubService({ repoOwner: 'test', repoName: 'repo', branch: 'main', githubToken: 'token' }, mockStore as any);
+      (service as any).octokit = mockOctokit;
+      (service as any).isSubmitting = false;
+
+      await service.submitReport('测试内容');
+
+      // 验证 lastCommitTime 被设置
+      expect(mockStoreSet).toHaveBeenCalledWith('lastCommitTime', expect.any(Number));
+    });
+  });
+
+  describe('manualPush', () => {
+    it('推送成功后应该清除 lastCommitTime', async () => {
+      const cachedReport = {
+        filePath: 'reports/2026-03-23.md',
+        content: '# 日报\n\n## 10:00\n测试内容\n',
+        sha: 'oldsha',
+      };
+
+      mockStoreGet.mockImplementation((key: string) => {
+        if (key === 'pendingCommits') return 3;
+        if (key === 'cachedReport') return cachedReport;
+        if (key === 'lastCommitTime') return 1000000001000;
+        return undefined;
+      });
+
+      const mockOctokit = {
+        repos: {
+          createOrUpdateFileContents: vi.fn().mockResolvedValue({}),
+        },
+      };
+
+      const mockStore = { get: mockStoreGet, set: mockStoreSet, delete: mockStoreDelete };
+      const service = new GitHubService({ repoOwner: 'test', repoName: 'repo', branch: 'main', githubToken: 'token' }, mockStore as any);
+      (service as any).octokit = mockOctokit;
+      (service as any).isSubmitting = false;
+
+      const result = await service.manualPush();
+
+      expect(result.success).toBe(true);
+      // 验证 lastCommitTime 被清除
+      expect(mockStoreDelete).toHaveBeenCalledWith('lastCommitTime');
+    });
+
+    it('没有待提交内容时应该返回失败', async () => {
+      mockStoreGet.mockImplementation((key: string) => {
+        if (key === 'pendingCommits') return 0;
+        return undefined;
+      });
+
+      const mockStore = { get: mockStoreGet, set: mockStoreSet, delete: mockStoreDelete };
+      const service = new GitHubService({ repoOwner: 'test', repoName: 'repo', branch: 'main', githubToken: 'token' }, mockStore as any);
+      (service as any).isSubmitting = false;
+
+      const result = await service.manualPush();
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('没有待提交的内容');
     });
   });
 });
