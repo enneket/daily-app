@@ -149,21 +149,17 @@ ipcMain.handle('get-config', async () => {
 });
 
 ipcMain.handle('save-config', async (_event: IpcMainInvokeEvent, config: LocalConfig) => {
-  // 将 token 单独加密存储
   if (config.githubToken) {
     saveToken(config.githubToken, store);
-    // 保存配置时不包含明文 token
     const configWithoutToken = { ...config, githubToken: undefined };
     store.set('github-config', configWithoutToken);
   } else {
     store.set('github-config', config);
   }
 
-  // 重置单例以使用新配置
   resetGitHubService();
   githubService = getGitHubService(store, config);
 
-  // 保存配置后自动初始化/更新仓库
   try {
     const result = await githubService.testConnectionAndInitialize();
     return {

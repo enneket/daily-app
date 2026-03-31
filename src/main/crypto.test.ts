@@ -61,9 +61,10 @@ describe('crypto module', () => {
   });
 
   describe('saveToken', () => {
-    it('加密可用时应该加密存储 token', () => {
+    it('加密可用时应该加密存储 token 为 base64', () => {
       mockIsEncryptionAvailable.mockReturnValue(true);
-      mockEncryptString.mockReturnValue(Buffer.from('encrypted'));
+      const encryptedBuffer = Buffer.from([101, 110, 99, 114, 121, 112, 116, 101, 100]);
+      mockEncryptString.mockReturnValue(encryptedBuffer);
 
       const store = {
         set: vi.fn(),
@@ -71,7 +72,7 @@ describe('crypto module', () => {
 
       saveToken('ghp_test123', store);
 
-      expect(store.set).toHaveBeenCalledWith('github-token', Buffer.from('encrypted'));
+      expect(store.set).toHaveBeenCalledWith('github-token', 'ZW5jcnlwdGVk');
       expect(store.set).toHaveBeenCalledWith('github-token-encrypted', true);
       expect(mockEncryptString).toHaveBeenCalledWith('ghp_test123');
     });
@@ -92,14 +93,13 @@ describe('crypto module', () => {
   });
 
   describe('loadToken', () => {
-    it('应该从加密存储加载 token（加密可用时）', () => {
+    it('应该从 base64 加密存储加载 token（加密可用时）', () => {
       mockIsEncryptionAvailable.mockReturnValue(true);
       mockDecryptString.mockReturnValue('ghp_decrypted');
-      const encryptedToken = Buffer.from('encrypted');
 
       const store = {
         get: vi.fn((key: string) => {
-          if (key === 'github-token') return encryptedToken;
+          if (key === 'github-token') return 'ZW5jcnlwdGVk';
           if (key === 'github-token-encrypted') return true;
           return undefined;
         }),
@@ -108,17 +108,16 @@ describe('crypto module', () => {
       const result = loadToken(store);
 
       expect(result).toBe('ghp_decrypted');
-      expect(mockDecryptString).toHaveBeenCalledWith(encryptedToken);
+      expect(mockDecryptString).toHaveBeenCalledWith(Buffer.from([101, 110, 99, 114, 121, 112, 116, 101, 100]));
     });
 
-    it('应该从 Uint8Array 格式的加密存储加载 token', () => {
+    it('应该从 base64 加密存储加载 token', () => {
       mockIsEncryptionAvailable.mockReturnValue(true);
-      mockDecryptString.mockReturnValue('ghp_decrypted_from_uint8array');
-      const encryptedTokenArray = new Uint8Array([101, 110, 99, 114, 121, 112, 116, 101, 100]);
+      mockDecryptString.mockReturnValue('ghp_decrypted_from_base64');
 
       const store = {
         get: vi.fn((key: string) => {
-          if (key === 'github-token') return encryptedTokenArray;
+          if (key === 'github-token') return 'aGhwX2RlY3J5cHRlZF9mcm9tX2Jhc2U2NA==';
           if (key === 'github-token-encrypted') return true;
           return undefined;
         }),
@@ -126,7 +125,7 @@ describe('crypto module', () => {
 
       const result = loadToken(store);
 
-      expect(result).toBe('ghp_decrypted_from_uint8array');
+      expect(result).toBe('ghp_decrypted_from_base64');
       expect(mockDecryptString).toHaveBeenCalled();
     });
 
@@ -201,45 +200,21 @@ describe('crypto module', () => {
       expect(result).toBeNull();
     });
 
-    it('token 不是 Buffer 类型且加密标志为 true 时应该返回 string', () => {
-      mockIsEncryptionAvailable.mockReturnValue(true);
+    it('加密不可用时应从明文字符串加载 token', () => {
+      mockIsEncryptionAvailable.mockReturnValue(false);
 
       const store = {
         get: vi.fn((key: string) => {
-          if (key === 'github-token') return 'string_token';
-          if (key === 'github-token-encrypted') return true;
+          if (key === 'github-token') return 'plain_text_token';
+          if (key === 'github-token-encrypted') return false;
           return undefined;
         }),
       } as any;
 
       const result = loadToken(store);
 
-      expect(result).toBe('string_token');
+      expect(result).toBe('plain_text_token');
       expect(mockDecryptString).not.toHaveBeenCalled();
-    });
-
-    it('加密可用但token不是Buffer时应走降级路径返回string', () => {
-      // 这是 line 44 的分支覆盖测试
-      // 条件: isEncrypted=true, isEncryptionAvailable=true, 但 Buffer.isBuffer(token)=false
-      mockIsEncryptionAvailable.mockReturnValue(true);
-      mockDecryptString.mockReturnValue('should_not_be_called');
-
-      const store = {
-        get: vi.fn((key: string) => {
-          if (key === 'github-token') return 'fallback_token';
-          if (key === 'github-token-encrypted') return true;
-          return undefined;
-        }),
-      } as any;
-
-      const result = loadToken(store);
-
-      // 应该走降级路径，返回字符串而不是解密
-      expect(result).toBe('fallback_token');
-      // 解密不应被调用，因为 token 不是 Buffer
-      expect(mockDecryptString).not.toHaveBeenCalled();
-      // isEncryptionAvailable 应该被调用了
-      expect(mockIsEncryptionAvailable).toHaveBeenCalled();
     });
   });
 });

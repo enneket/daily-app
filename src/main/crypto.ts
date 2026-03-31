@@ -17,49 +17,60 @@ export function isEncryptionAvailable(): boolean {
 }
 
 export function saveToken(token: string, store: AppStore): void {
-  if (isEncryptionAvailable()) {
+  const encryptionAvailable = isEncryptionAvailable();
+
+  if (encryptionAvailable) {
     const encrypted = encryptToken(token);
-    store.set(TOKEN_KEY, encrypted);
+    const base64Token = encrypted.toString('base64');
+    store.set(TOKEN_KEY, base64Token);
     store.set(ENCRYPTED_FLAG, true);
   } else {
-    // 如果加密不可用，降级为明文存储
     store.set(TOKEN_KEY, token);
     store.set(ENCRYPTED_FLAG, false);
   }
 }
 
 export function loadToken(store: AppStore): string | null {
-  // 1. 首先尝试从新的加密存储加载
   const token = store.get(TOKEN_KEY);
   const isEncrypted = store.get(ENCRYPTED_FLAG) as boolean;
 
   if (token) {
     if (isEncrypted && isEncryptionAvailable()) {
-      // 加密存储且加密可用
-      if (Buffer.isBuffer(token)) {
-        return decryptToken(token);
-      }
-      // 处理 Uint8Array 类型（electron-store 反序列化后可能是这个类型）
-      if (token instanceof Uint8Array) {
-        return decryptToken(Buffer.from(token));
+      if (typeof token === 'string') {
+        const buffer = Buffer.from(token, 'base64');
+        return decryptToken(buffer);
       }
     }
-    // 降级情况：非加密存储或加密不可用
     if (typeof token === 'string') {
       return token;
     }
   }
 
-  // 2. 尝试从旧配置 (github-config) 加载 token（兼容旧版本）
   const config = store.get('github-config') as { githubToken?: string } | undefined;
   if (config?.githubToken) {
-    // 旧配置中有 token，需要迁移到新存储
     saveToken(config.githubToken, store);
-    // 清除旧配置中的 token
     const newConfig = { ...config, githubToken: undefined };
     store.set('github-config', newConfig);
     return config.githubToken;
   }
 
   return null;
+}
+
+export function debugCrypto(store: AppStore): object {
+  const token = store.get(TOKEN_KEY);
+  const isEncrypted = store.get(ENCRYPTED_FLAG);
+  const encryptionAvailable = isEncryptionAvailable();
+
+  return {
+    tokenType: token ? token.constructor.name : 'undefined',
+    tokenIsBuffer: Buffer.isBuffer(token),
+    tokenIsUint8Array: token instanceof Uint8Array,
+    tokenIsString: typeof token === 'string',
+    tokenLength: token ? (typeof token === 'string' ? token.length : 'binary') : 0,
+    isEncrypted,
+    encryptionAvailable,
+    hasToken: !!token,
+    configHasToken: !!(store.get('github-config') as any)?.githubToken,
+  };
 }
