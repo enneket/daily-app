@@ -111,6 +111,25 @@ describe('crypto module', () => {
       expect(mockDecryptString).toHaveBeenCalledWith(encryptedToken);
     });
 
+    it('应该从 Uint8Array 格式的加密存储加载 token', () => {
+      mockIsEncryptionAvailable.mockReturnValue(true);
+      mockDecryptString.mockReturnValue('ghp_decrypted_from_uint8array');
+      const encryptedTokenArray = new Uint8Array([101, 110, 99, 114, 121, 112, 116, 101, 100]);
+
+      const store = {
+        get: vi.fn((key: string) => {
+          if (key === 'github-token') return encryptedTokenArray;
+          if (key === 'github-token-encrypted') return true;
+          return undefined;
+        }),
+      } as any;
+
+      const result = loadToken(store);
+
+      expect(result).toBe('ghp_decrypted_from_uint8array');
+      expect(mockDecryptString).toHaveBeenCalled();
+    });
+
     it('应该从明文存储加载 token（加密不可用时）', () => {
       mockIsEncryptionAvailable.mockReturnValue(false);
 

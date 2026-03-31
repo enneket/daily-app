@@ -39,6 +39,10 @@ export function loadToken(store: AppStore): string | null {
       if (Buffer.isBuffer(token)) {
         return decryptToken(token);
       }
+      // 处理 Uint8Array 类型（electron-store 反序列化后可能是这个类型）
+      if (token instanceof Uint8Array) {
+        return decryptToken(Buffer.from(token));
+      }
     }
     // 降级情况：非加密存储或加密不可用
     if (typeof token === 'string') {
