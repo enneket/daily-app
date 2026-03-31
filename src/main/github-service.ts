@@ -533,8 +533,22 @@ jobs:
         throw new Error(`部分文件更新失败: ${failedFiles.join(', ')}`);
       }
     } catch (error: unknown) {
-      console.error('更新仓库失败:', error);
-      throw new Error('更新仓库失败，请检查权限和网络连接');
+      let detailedError = '更新仓库失败，请检查权限和网络连接';
+
+      if (error instanceof Error) {
+        detailedError = `更新仓库失败: ${error.message}`;
+
+        if (error.message.includes('Bad credentials')) {
+          detailedError = 'GitHub Token 无效或已过期，请重新配置';
+        } else if (error.message.includes('Not Found')) {
+          detailedError = '仓库或分支不存在，请检查配置是否正确';
+        } else if (error.message.includes('must have push access')) {
+          detailedError = 'Token 权限不足，需要 repo 权限才能更新仓库';
+        }
+      }
+
+      console.error('更新仓库失败:', detailedError);
+      throw new Error(detailedError);
     }
   }
 

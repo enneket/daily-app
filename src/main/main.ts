@@ -170,7 +170,12 @@ ipcMain.handle('save-config', async (_event: IpcMainInvokeEvent, config: LocalCo
       updatedFiles: result.updatedFiles
     };
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : '操作失败，请检查网络连接和权限';
+    let errorMessage = '操作失败，请检查网络连接和权限';
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
     console.error('初始化/更新仓库失败:', errorMessage);
     return {
       success: false,
