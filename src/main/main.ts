@@ -103,8 +103,6 @@ function createWindow() {
     // Windows 需要额外设置应用图标
     mainWindow.setIcon(icon);
   }
-
-
 }
 
 // 单实例锁定
